@@ -36,12 +36,23 @@ function guessDeviceName(): string {
 }
 
 export function normalise(input: Partial<Database> | null): Database {
+  // Read the version the file was written by *before* overwriting it, so migrations can run.
+  const cameFrom = typeof input?.schemaVersion === 'number' ? input.schemaVersion : SCHEMA_VERSION;
+  const isExisting = Boolean(input && Object.keys(input).length);
+
   const db = { ...freshDatabase(), ...(input ?? {}) } as Database;
 
   db.schemaVersion = SCHEMA_VERSION;
   if (!db.deviceId) db.deviceId = uid();
   if (!db.deviceName) db.deviceName = guessDeviceName();
   db.settings = { ...DEFAULT_SETTINGS, ...(db.settings ?? {}) } as Settings;
+
+  // v1 → v2: online lookup did not exist, so every v1 file stored `false` from the old default.
+  // A stored value normally wins over a new default, which would hide the feature forever with
+  // no way to tell "she turned it off" apart from "it hadn't been invented".
+  if (isExisting && cameFrom < 2) {
+    db.settings.onlineLookup = true;
+  }
 
   // Categories: keep the user's, and add any builtin they've never seen (a new app version
   // shipping a new default category should appear rather than silently not exist).

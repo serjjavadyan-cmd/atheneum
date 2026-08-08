@@ -111,6 +111,7 @@ src/
 scripts/
   test-sync.cjs      sync safety — the merge rules
   test-fill.cjs      auto-fill safety — fills gaps, never overwrites
+  test-migrate.cjs   opening an older library loses nothing
   smoke-electron.cjs loads the real built app in a hidden window
   make-icon.cjs      draws the app icon from scratch
 ```
@@ -164,6 +165,25 @@ Two things worth knowing, both verified against the live services:
 
 Keys live in **Settings → Looking things up**. Everything works without them, just thinner. All
 fetching happens in the main process — the page's own CSP forbids outbound requests.
+
+### Getting the free keys
+
+None need a card, and the app works without any of them.
+
+**TMDB** — films, TV, and the IMDb link.
+1. Sign up at `themoviedb.org`.
+2. **Settings → API → Request an API key → Developer.** The form wants a name and a
+   one-line description; "personal media catalogue" is a fine answer.
+3. Copy **API Key (v3 auth)** into Settings → Looking things up.
+
+**OMDb** — the IMDb rating.
+1. `omdbapi.com/apikey.aspx`, choose **FREE (1,000 daily)**, give an email.
+2. They email a key **and an activation link** — click the link, or the key silently won't work.
+
+**IGDB** — games. It runs on Twitch's developer platform.
+1. `dev.twitch.tv/console` → **Applications → Register Your Application**.
+2. Any name; OAuth redirect `http://localhost`; category **Application Integration**.
+3. Copy the **Client ID**, press **New Secret**, copy that too.
 
 ### Who read it
 

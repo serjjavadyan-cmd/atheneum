@@ -238,4 +238,9 @@ export interface Database {
   savedViews: SavedView[];
 }
 
-export const SCHEMA_VERSION = 1;
+/**
+ * 1 — the original shape.
+ * 2 — online lookup added. Libraries written by v1 stored `onlineLookup: false` from the old
+ *     default, which would otherwise permanently hide a feature that didn't exist yet.
+ */
+export const SCHEMA_VERSION = 2;

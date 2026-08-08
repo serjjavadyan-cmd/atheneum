@@ -14,9 +14,10 @@
     "build:win": "npm run build:web && electron-builder --win",
     "build:mac": "npm run build:web && electron-builder --mac",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:sync && npm run test:fill && npm run test:app",
+    "test": "npm run test:sync && npm run test:fill && npm run test:migrate && npm run test:app",
     "test:sync": "node scripts/test-sync.cjs",
     "test:fill": "node scripts/test-fill.cjs",
+    "test:migrate": "node scripts/test-migrate.cjs",
     "test:app": "vite build && electron scripts/smoke-electron.cjs",
     "icon": "node scripts/make-icon.cjs"
   },
