@@ -111,15 +111,26 @@ export function DiaryView() {
                 </button>
               </div>
             ) : (
-              selectedDays.map((day, i) => (
-                <DayEditor
-                  key={day.id}
-                  day={day}
-                  /* Only meaningful when a merge produced two versions of the same date. */
-                  duplicateIndex={selectedDays.length > 1 ? i + 1 : null}
-                  duplicateTotal={selectedDays.length}
-                />
-              ))
+              <>
+                {selectedDays.map((day, i) => (
+                  <DayEditor
+                    key={day.id}
+                    day={day}
+                    index={selectedDays.length > 1 ? i + 1 : null}
+                    total={selectedDays.length}
+                  />
+                ))}
+
+                {/* A day can hold as many separate entries as you like — morning and evening
+                    are different thoughts, and a merge can bring more back from the other
+                    computer. They are always kept apart, never concatenated. */}
+                <button
+                  className="btn diary-add-another"
+                  onClick={() => createDiaryDay(selected)}
+                >
+                  <IconPlus size={13} /> Add another entry for this day
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -133,10 +144,11 @@ export function DiaryView() {
  * ------------------------------------------------------------------ */
 
 function DayEditor({
-  day, duplicateIndex, duplicateTotal,
-}: { day: DiaryDay; duplicateIndex: number | null; duplicateTotal: number }) {
+  day, index, total,
+}: { day: DiaryDay; index: number | null; total: number }) {
   const db = useStore((s) => s.db);
   const update = useStore((s) => s.updateDiaryDay);
+  const setArchivedDay = useStore((s) => s.updateDiaryDay);
   const go = useUi((s) => s.go);
   const [linking, setLinking] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -154,10 +166,22 @@ function DayEditor({
 
   return (
     <article className="diary-day">
-      {duplicateIndex && (
+      {index && (
         <div className="diary-dupe">
-          Version {duplicateIndex} of {duplicateTotal} — written on{' '}
-          {day.origin === db.deviceId ? 'this computer' : 'your other computer'}. Both are kept.
+          <span>
+            Entry {index} of {total}
+            {day.origin !== db.deviceId && ' · written on your other computer'}
+          </span>
+          <button
+            className="chip"
+            onClick={() => {
+              if (day.body.trim() && !confirm('Move this entry to the archive?')) return;
+              setArchivedDay(day.id, { archived: true });
+            }}
+            title="Archive this one — nothing is deleted"
+          >
+            Archive
+          </button>
         </div>
       )}
 

@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('atheneum', {
   saveDb: (db) => ipcRenderer.invoke('db:save', db),
   saveImage: (bytes, ext) => ipcRenderer.invoke('image:save', bytes, ext),
   chooseFolder: () => ipcRenderer.invoke('app:chooseFolder'),
+  lookupSearch: (categoryId, query, hints, keys, force) =>
+    ipcRenderer.invoke('lookup:search', categoryId, query, hints, keys, force),
+  lookupCover: (url) => ipcRenderer.invoke('lookup:cover', url),
   syncStatus: (configured) => ipcRenderer.invoke('sync:status', configured),
   syncNow: (db) => ipcRenderer.invoke('sync:now', db),
   dataDir: () => ipcRenderer.invoke('app:dataDir'),

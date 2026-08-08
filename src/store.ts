@@ -3,7 +3,7 @@ import { platform } from './platform';
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS } from './defaults';
 import { SCHEMA_VERSION } from './types';
 import type {
-  Category, Database, DiaryDay, Entry, Field, FieldValue, ImageRef, SavedView, Settings,
+  Category, Database, DiaryDay, Entry, Field, FieldValue, ImageRef, SavedView, Settings, SubItem,
 } from './types';
 import { debounce, isoDate, now, slugify, toSortTitle, uid } from './lib/util';
 
@@ -50,6 +50,19 @@ export function normalise(input: Partial<Database> | null): Database {
   for (const def of DEFAULT_CATEGORIES) {
     if (!haveCategory.has(def.id)) db.categories.push(structuredClone(def));
   }
+
+  // A newer version adding a field to a built-in category should reach existing libraries too,
+  // the same way a new category does. Matching is by key, so a field she removed still exists
+  // as hidden and is left alone rather than reappearing.
+  for (const def of DEFAULT_CATEGORIES) {
+    const existing = db.categories.find((c) => c.id === def.id);
+    if (!existing || !Array.isArray(existing.fields)) continue;
+    const haveKey = new Set(existing.fields.map((f) => f.key));
+    for (const field of def.fields) {
+      if (!haveKey.has(field.key)) existing.fields.push(structuredClone(field));
+    }
+  }
+
   db.categories = db.categories.map(normaliseCategory);
   db.categories.sort((a, b) => a.order - b.order);
 
@@ -75,6 +88,8 @@ function normaliseCategory(c: Category): Category {
     statusLabels: Array.isArray(c.statusLabels) && c.statusLabels.length
       ? c.statusLabels
       : ['To do', 'In progress', 'Done'],
+    subItemLabel: c.subItemLabel === undefined ? null : c.subItemLabel,
+    tracksWho: c.tracksWho === undefined ? true : Boolean(c.tracksWho),
     defaultLayout: c.defaultLayout ?? 'grid',
     defaultSort: c.defaultSort ?? { key: 'title', direction: 'asc' },
     builtin: Boolean(c.builtin),
@@ -109,15 +124,30 @@ function normaliseEntry(e: Entry, deviceId: string): Entry {
     values: e.values && typeof e.values === 'object' ? e.values : {},
     rating: typeof e.rating === 'number' ? e.rating : 0,
     status: typeof e.status === 'number' ? e.status : 0,
+    who: e.who === 'a' || e.who === 'b' ? e.who : 'both',
     favorite: Boolean(e.favorite),
     notes: e.notes ?? '',
     tags: Array.isArray(e.tags) ? e.tags : [],
+    subItems: Array.isArray(e.subItems) ? e.subItems.map(normaliseSubItem) : [],
     dateStarted: e.dateStarted ?? null,
     dateFinished: e.dateFinished ?? null,
     createdAt: e.createdAt ?? now(),
     updatedAt: e.updatedAt ?? e.createdAt ?? now(),
     origin: e.origin ?? deviceId,
     archived: Boolean(e.archived),
+  };
+}
+
+function normaliseSubItem(s: SubItem): SubItem {
+  return {
+    id: s.id || uid(),
+    number: s.number ?? '',
+    title: s.title ?? '',
+    note: s.note ?? '',
+    rating: typeof s.rating === 'number' ? s.rating : 0,
+    done: Boolean(s.done),
+    date: s.date ?? null,
+    createdAt: s.createdAt ?? now(),
   };
 }
 
@@ -156,6 +186,11 @@ interface AppState {
   setCover: (id: string, index: number) => void;
   setArchived: (id: string, archived: boolean) => void;
   destroyEntry: (id: string) => void;
+
+  // sub-items — episodes, chapters, missions
+  addSubItem: (entryId: string, partial?: Partial<SubItem>) => string;
+  updateSubItem: (entryId: string, subId: string, patch: Partial<SubItem>) => void;
+  removeSubItem: (entryId: string, subId: string) => void;
 
   // categories & fields
   createCategory: (partial?: Partial<Category>) => string;
@@ -226,6 +261,13 @@ export const useStore = create<AppState>((set) => {
     createEntry(categoryId, title) {
       const id = uid();
       mutate((db) => {
+        // Seed any field that declares a default, so a new entry starts sensibly filled.
+        const category = db.categories.find((c) => c.id === categoryId);
+        const values: Record<string, FieldValue> = {};
+        for (const field of category?.fields ?? []) {
+          if (field.defaultValue !== undefined) values[field.key] = field.defaultValue;
+        }
+
         const entry: Entry = {
           id,
           categoryId,
@@ -233,12 +275,14 @@ export const useStore = create<AppState>((set) => {
           sortTitle: toSortTitle(title),
           images: [],
           coverIndex: 0,
-          values: {},
+          values,
           rating: 0,
           status: 0,
+          who: 'both',
           favorite: false,
           notes: '',
           tags: [],
+          subItems: [],
           dateStarted: null,
           dateFinished: null,
           createdAt: now(),
@@ -301,6 +345,51 @@ export const useStore = create<AppState>((set) => {
       });
     },
 
+    /* ---- sub-items ---- */
+
+    addSubItem(entryId, partial = {}) {
+      const id = uid();
+      mutate((db) => {
+        const entry = db.entries.find((e) => e.id === entryId);
+        if (!entry) return;
+        // Guess the next number so adding episode after episode doesn't mean retyping.
+        const lastNumeric = [...entry.subItems]
+          .map((s) => Number(s.number))
+          .filter((n) => Number.isFinite(n))
+          .pop();
+        const item: SubItem = {
+          id,
+          number: partial.number ?? (lastNumeric !== undefined ? String(lastNumeric + 1) : '1'),
+          title: partial.title ?? '',
+          note: partial.note ?? '',
+          rating: partial.rating ?? 0,
+          done: partial.done ?? false,
+          date: partial.date ?? null,
+          createdAt: now(),
+        };
+        touchEntry(db, entryId, { subItems: [...entry.subItems, item] });
+      });
+      return id;
+    },
+
+    updateSubItem(entryId, subId, patch) {
+      mutate((db) => {
+        const entry = db.entries.find((e) => e.id === entryId);
+        if (!entry) return;
+        touchEntry(db, entryId, {
+          subItems: entry.subItems.map((s) => (s.id === subId ? { ...s, ...patch } : s)),
+        });
+      });
+    },
+
+    removeSubItem(entryId, subId) {
+      mutate((db) => {
+        const entry = db.entries.find((e) => e.id === entryId);
+        if (!entry) return;
+        touchEntry(db, entryId, { subItems: entry.subItems.filter((s) => s.id !== subId) });
+      });
+    },
+
     /* ---- categories & fields ---- */
 
     createCategory(partial = {}) {
@@ -316,6 +405,8 @@ export const useStore = create<AppState>((set) => {
             { id: uid(), key: 'description', label: 'Description', type: 'longtext' },
           ],
           statusLabels: partial.statusLabels ?? ['To do', 'In progress', 'Done'],
+          subItemLabel: partial.subItemLabel ?? null,
+          tracksWho: partial.tracksWho ?? true,
           defaultLayout: partial.defaultLayout ?? 'grid',
           defaultSort: partial.defaultSort ?? { key: 'title', direction: 'asc' },
           builtin: false,

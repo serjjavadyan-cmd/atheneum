@@ -129,6 +129,32 @@ export function SettingsView() {
             </Section>
           )}
 
+          <Section title="Who">
+            <p className="field-hint">
+              The three choices on every entry, for marking who read, watched or played it.
+              Renaming them here is safe — entries store which of the three, never the name.
+            </p>
+            <div className="row" style={{ gap: 10 }}>
+              {(['both', 'a', 'b'] as const).map((key) => (
+                <div className="field-row grow" key={key}>
+                  <label className="field-label" htmlFor={`who-${key}`}>
+                    {key === 'both' ? 'Together' : key === 'a' ? 'First person' : 'Second person'}
+                  </label>
+                  <input
+                    id={`who-${key}`}
+                    className="input"
+                    value={db.settings.whoLabels[key]}
+                    onChange={(e) =>
+                      updateSettings({
+                        whoLabels: { ...db.settings.whoLabels, [key]: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </Section>
+
           <Section title="Appearance">
             <Switch
               checked={db.settings.reduceMotion}
@@ -137,16 +163,50 @@ export function SettingsView() {
             />
           </Section>
 
-          <Section title="Cover art">
+          <Section title="Looking things up">
             <Switch
               checked={db.settings.onlineLookup}
               onChange={(v) => updateSettings({ onlineLookup: v })}
-              label="Look covers up online when I add something"
+              label="Show the Fill details and Find cover buttons on entries"
             />
             <p className="field-hint">
-              Off by default — you add covers yourself by dropping or pasting an image onto an
-              entry. Turning this on is what the online lookup providers hook into.
+              Nothing is ever fetched on its own — you press a button, pick from what comes back,
+              and see exactly which empty fields would be filled before anything is written.
+              Fields you've already filled are never touched.
             </p>
+
+            <p className="field-hint">
+              Books, manga, anime and board games work with no setup at all, through Open Library,
+              Google Books, MyAnimeList and BoardGameGeek. The keys below are free, take about two
+              minutes each and need no card — without them, films, TV and games come back thin.
+            </p>
+
+            <KeyField
+              label="TMDB — film and TV posters"
+              hint="themoviedb.org → Settings → API. Goodreads and IMDb have no free API; this is what everyone uses instead, and it also supplies the IMDb link."
+              value={db.settings.tmdbKey}
+              onChange={(v) => updateSettings({ tmdbKey: v })}
+            />
+            <KeyField
+              label="OMDb — IMDb ratings"
+              hint="omdbapi.com → free key. Adds the IMDb score to films and shows."
+              value={db.settings.omdbKey}
+              onChange={(v) => updateSettings({ omdbKey: v })}
+            />
+            <div className="row" style={{ gap: 10 }}>
+              <KeyField
+                label="IGDB client ID"
+                hint="dev.twitch.tv → register an application"
+                value={db.settings.igdbClientId}
+                onChange={(v) => updateSettings({ igdbClientId: v })}
+              />
+              <KeyField
+                label="IGDB client secret"
+                hint="From the same Twitch application"
+                value={db.settings.igdbClientSecret}
+                onChange={(v) => updateSettings({ igdbClientSecret: v })}
+              />
+            </div>
           </Section>
 
           <Section title="This library">
@@ -177,6 +237,34 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="settings-title">{title}</h2>
       <div className="settings-body">{children}</div>
     </section>
+  );
+}
+
+/** An API key. Masked once set, so a shared screen doesn't leak it. */
+function KeyField({
+  label, hint, value, onChange,
+}: { label: string; hint: string; value: string; onChange: (v: string) => void }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="field-row grow">
+      <span className="field-label">{label}</span>
+      <div className="row" style={{ gap: 8 }}>
+        <input
+          className="input"
+          type={shown || !value ? 'text' : 'password'}
+          value={value}
+          placeholder="not set"
+          spellCheck={false}
+          onChange={(e) => onChange(e.target.value.trim())}
+        />
+        {value && (
+          <button className="btn btn-sm" onClick={() => setShown((s) => !s)}>
+            {shown ? 'Hide' : 'Show'}
+          </button>
+        )}
+      </div>
+      <span className="field-hint">{hint}</span>
+    </div>
   );
 }
 

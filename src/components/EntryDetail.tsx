@@ -6,12 +6,15 @@ import type { Entry } from '../types';
 import { importImageFile, imagesFromDataTransfer } from '../lib/images';
 import { valueToFacets } from '../lib/query';
 import { formatDateShort } from '../lib/util';
-import { CoverImage, Rating, StatusStepper, coverOf, tintOf, useImageUrl } from './primitives';
+import { CoverImage, Rating, StatusStepper, WhoPicker, coverOf, tintOf, useImageUrl } from './primitives';
+import { SubItems } from './SubItems';
 import { FieldInput } from './FieldInput';
 import { Menu } from './Menu';
 import {
-  IconArchive, IconChevronLeft, IconHeart, IconHeartOutline, IconImage, IconPlus, IconTrash, IconX,
+  IconArchive, IconChevronLeft, IconHeart, IconHeartOutline, IconImage, IconPlus,
+  IconSearch, IconSparkle, IconTrash, IconX,
 } from './Icons';
+import { LookupPanel } from './LookupPanel';
 
 export function EntryDetail({ entry }: { entry: Entry }) {
   const db = useStore((s) => s.db);
@@ -32,6 +35,7 @@ export function EntryDetail({ entry }: { entry: Entry }) {
 
   const [dropping, setDropping] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [lookup, setLookup] = useState<'details' | 'cover' | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   /* --- suggestions: every value already used for this field, anywhere in the library --- */
@@ -153,6 +157,11 @@ export function EntryDetail({ entry }: { entry: Entry }) {
               <button className="btn btn-sm" onClick={() => fileInput.current?.click()}>
                 <IconImage size={12} /> {entry.images.length ? 'Add image' : 'Choose image'}
               </button>
+              {db.settings.onlineLookup && (
+                <button className="btn btn-sm" onClick={() => setLookup('cover')} title="Search online for artwork">
+                  <IconSearch size={12} /> Find cover
+                </button>
+              )}
               {cover && (
                 <button className="btn btn-sm btn-danger" onClick={() => removeImage(entry.id, cover.hash)}>
                   <IconX size={12} /> Remove
@@ -194,6 +203,14 @@ export function EntryDetail({ entry }: { entry: Entry }) {
             <div className="detail-actionbar">
               <Rating value={entry.rating} size="lg" onChange={(v) => updateEntry(entry.id, { rating: v })} />
 
+              {category?.tracksWho && (
+                <WhoPicker
+                  who={entry.who}
+                  labels={db.settings.whoLabels}
+                  onChange={(w) => updateEntry(entry.id, { who: w })}
+                />
+              )}
+
               {category && (
                 <StatusStepper
                   status={entry.status}
@@ -212,6 +229,16 @@ export function EntryDetail({ entry }: { entry: Entry }) {
               )}
 
               <div className="grow" />
+
+              {db.settings.onlineLookup && category && (
+                <button
+                  className="btn btn-sm"
+                  onClick={() => setLookup('details')}
+                  title="Look this up and fill in whatever is still empty"
+                >
+                  <IconSparkle size={12} /> Fill details
+                </button>
+              )}
 
               <button
                 className={`btn-icon${entry.favorite ? ' is-on' : ''}`}
@@ -308,6 +335,8 @@ export function EntryDetail({ entry }: { entry: Entry }) {
           </section>
         ))}
 
+        {category && <SubItems entry={entry} category={category} />}
+
         <section className="detail-section">
           <header className="detail-section-head">
             <h2 className="detail-section-title">My notes</h2>
@@ -334,6 +363,15 @@ export function EntryDetail({ entry }: { entry: Entry }) {
           </section>
         )}
       </div>
+
+      {lookup && category && (
+        <LookupPanel
+          entry={entry}
+          category={category}
+          mode={lookup}
+          onClose={() => setLookup(null)}
+        />
+      )}
     </div>
   );
 }

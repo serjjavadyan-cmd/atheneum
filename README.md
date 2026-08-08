@@ -22,7 +22,7 @@ That opens the app window. `Ctrl+C` in the terminal closes everything.
 | --- | --- |
 | `npm run dev` | The real app window, against a live-reloading UI |
 | `npm run dev:web` | Just the UI in a browser tab, no Electron. Add `?seed` for a sample library |
-| `npm test` | The sync safety tests — run these before trusting a change to merging |
+| `npm test` | All three suites. Run before trusting a change to merging or auto-fill |
 | `npm run build:win` | Builds `release/Atheneum Setup <version>.exe` |
 | `npm run build:mac` | Builds `release/Atheneum-<version>.dmg` |
 
@@ -79,12 +79,15 @@ That's the rule the whole design is built around.
   overwrites something you wrote**.
 - Two versions of the same notes or diary entry: **both are kept**, separated by a `— — —` rule.
   Nothing you typed is thrown away because a clock said so.
-- Write in your diary on the same day on both machines and you get both days, shown stacked.
+- A day holds **as many diary entries as you like** — morning and evening are different thoughts.
+  Write on the same day on both machines and you get both, stacked, never concatenated.
 - **Nothing is ever deleted by a sync.** Removing something means Archive, which is reversible.
   Delete-for-good exists only inside the Archive, only on that one computer, and never travels.
 
-Run `npm test` after touching anything in `electron/sync/` — those 32 assertions exist because
-the merge is the one place a bug costs you writing you can't get back.
+Run `npm test` after touching anything in `electron/sync/` — those assertions exist because the
+merge is the one place a bug costs you writing you can't get back. They already caught one: an
+early version re-appended the other machine's notes on every sync, so notes grew a copy of
+themselves each time.
 
 ---
 
@@ -92,6 +95,8 @@ the merge is the one place a bug costs you writing you can't get back.
 
 ```
 electron/          main process — window, files, the atheneum:// image protocol
+  images.cjs       storing and serving covers
+  lookup.cjs       the online providers (main process: the page's CSP forbids fetching)
   sync/
     locate.cjs     finds the cloud folder
     merge.cjs      the additive merge (pure, no Electron — that's why it's testable)
@@ -104,8 +109,10 @@ src/
   lib/             images and tint sampling, sorting/filtering, helpers
   components/      the interface
 scripts/
-  test-sync.cjs    sync safety tests
-  make-icon.cjs    draws the app icon from scratch
+  test-sync.cjs      sync safety — the merge rules
+  test-fill.cjs      auto-fill safety — fills gaps, never overwrites
+  smoke-electron.cjs loads the real built app in a hidden window
+  make-icon.cjs      draws the app icon from scratch
 ```
 
 **Data lives outside the project**, so nothing here can destroy it:
@@ -129,5 +136,46 @@ Drag an image onto an entry, or paste one. On import it's downscaled, stored und
 content hash, and a dominant colour is sampled out of it — that colour is what lights the card
 and the entry's page, so a Dune page glows amber and a Blade Runner page glows teal.
 
-Automatic cover lookup is deliberately **off**. `settings.onlineLookup` is where it switches on
-once providers are wired up.
+### Looking things up
+
+Two separate buttons on an entry: **Fill details**, and **Find cover** next to Choose image.
+Neither ever fires on its own — you press it, pick from the matches, and see exactly which empty
+fields would be filled before anything is written.
+
+**Fields you have filled are never touched.** Type *The Iliad* and *Homer*, press Fill details,
+and Homer is used to narrow the search, listed under "leaving your own entries alone", and left
+exactly as you wrote him. Everything still blank gets filled in.
+
+| Source | Covers | Key |
+| --- | --- | --- |
+| Open Library, Google Books | Books | none |
+| MyAnimeList (via Jikan) | Anime, manga | none |
+| TMDB | Films, TV — and the IMDb link | free, 2 min |
+| OMDb | IMDb ratings | free, 2 min |
+| IGDB | Games | free Twitch app |
+
+Two things worth knowing, both verified against the live services:
+
+- **Goodreads retired its API in 2020 and IMDb has no free API at all.** Nobody's app fetches
+  IMDb posters. TMDB is the substitute; it supplies the artwork and the `imdb_id`, so films and
+  shows still get a real IMDb link and, with an OMDb key, the IMDb score.
+- **BoardGameGeek now requires an account** for its XML API and returns 401 to everyone else, so
+  board games have to be added by hand. The app says so plainly rather than looking broken.
+
+Keys live in **Settings → Looking things up**. Everything works without them, just thinner. All
+fetching happens in the main process — the page's own CSP forbids outbound requests.
+
+### Who read it
+
+A three-way control sits just before the status stepper on every entry: **Both / Nane / Sergey**,
+Both by default. Filter and group by it like anything else. The names are editable in
+**Settings → Who**; entries store which of the three, never the name, so renaming is safe. Turn
+it off per category in the category editor.
+
+### Episodes, chapters, missions
+
+Each category can name the small things inside an entry — Episodes for TV and anime, Chapters for
+books, Volumes for manga, Missions for games, Plays for board games. Add only the ones worth
+remembering, each with a number, title, rating, note, date and a done tick. Rename or disable it
+per category. On sync they union by id, ticking done on either machine sticks, and two notes on
+the same episode both survive.

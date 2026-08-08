@@ -189,6 +189,29 @@ function Editor({ category, onClose }: { category: Category; onClose: () => void
                 </span>
               </div>
 
+              <div className="field-row">
+                <label className="field-label" htmlFor="cat-subitems">Small things inside an entry</label>
+                <input
+                  id="cat-subitems"
+                  className="input"
+                  value={category.subItemLabel ?? ''}
+                  placeholder="Off — leave empty for none"
+                  onChange={(e) =>
+                    updateCategory(category.id, { subItemLabel: e.target.value.trim() || null })
+                  }
+                />
+                <span className="field-hint">
+                  Episodes, Chapters, Missions, Plays — whatever this category holds. Only the ones
+                  you choose to add, never a full index. Leave empty to turn the section off.
+                </span>
+              </div>
+
+              <Checkbox
+                checked={category.tracksWho}
+                onChange={(v) => updateCategory(category.id, { tracksWho: v })}
+                label={`Show the ${db.settings.whoLabels.both} / ${db.settings.whoLabels.a} / ${db.settings.whoLabels.b} choice on these entries`}
+              />
+
               <div className="danger-zone">
                 <div>
                   <div style={{ fontSize: 13 }}>Hide this category</div>

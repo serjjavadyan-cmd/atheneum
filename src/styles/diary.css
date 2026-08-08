@@ -132,13 +132,22 @@
 }
 
 .diary-dupe {
-  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 9px 7px 12px;
   margin-bottom: 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--hairline);
   background: rgba(228, 207, 154, 0.05);
   font-size: 11.5px;
   color: var(--ink-dim);
+}
+
+.diary-add-another {
+  align-self: flex-start;
+  margin-top: 30px;
 }
 
 .diary-moods {

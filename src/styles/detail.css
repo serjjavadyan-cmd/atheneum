@@ -229,6 +229,47 @@
 }
 .detail-section-title { font-family: var(--serif); font-size: 17px; }
 
+/* --- who: the three-way control before the status stepper --------------------------- */
+.who-picker button.is-on {
+  color: var(--ink);
+  background: hsl(var(--tint) / 0.24);
+}
+
+/* --- sub-items: episodes, chapters, missions ---------------------------------------- */
+.subitems { display: flex; flex-direction: column; gap: 5px; }
+
+.subitem {
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.016);
+  transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease),
+              opacity var(--fast) var(--ease);
+}
+.subitem:hover { border-color: var(--hairline-firm); }
+.subitem.is-open { background: rgba(255, 255, 255, 0.032); border-color: var(--hairline-firm); }
+/* Done items recede rather than disappear — still readable, clearly behind you. */
+.subitem.is-done .subitem-number,
+.subitem.is-done .subitem-head > input.grow { color: var(--ink-dim); }
+
+.subitem-head { display: flex; align-items: center; gap: 10px; padding: 7px 11px; }
+
+.subitem-number {
+  width: 58px;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+  font-size: 12px;
+  text-align: center;
+}
+
+.subitem-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 12px 13px 40px;
+  border-top: 1px solid var(--hairline);
+}
+
 /* --- people list ------------------------------------------------------------------ */
 .people { display: flex; flex-wrap: wrap; gap: 7px; }
 .person {

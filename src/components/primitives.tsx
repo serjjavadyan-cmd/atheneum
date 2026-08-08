@@ -150,6 +150,35 @@ export function StatusPill({ status, labels }: { status: number; labels: string[
   );
 }
 
+/**
+ * Who experienced it. Sits immediately before the status stepper.
+ *
+ * The stored values are 'both' | 'a' | 'b' and never change; only the labels are configurable,
+ * so renaming Sergey in Settings can't orphan existing entries.
+ */
+export function WhoPicker({
+  who, labels, onChange,
+}: {
+  who: 'both' | 'a' | 'b';
+  labels: { both: string; a: string; b: string };
+  onChange: (w: 'both' | 'a' | 'b') => void;
+}) {
+  return (
+    <div className="segmented who-picker" role="group" aria-label="Who">
+      {(['both', 'a', 'b'] as const).map((key) => (
+        <button
+          key={key}
+          className={who === key ? 'is-on' : ''}
+          onClick={() => onChange(key)}
+          aria-pressed={who === key}
+        >
+          {labels[key]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function StatusStepper({
   status, labels, onChange,
 }: { status: number; labels: string[]; onChange: (n: number) => void }) {

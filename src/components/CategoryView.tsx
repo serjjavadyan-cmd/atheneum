@@ -33,8 +33,8 @@ export function CategoryView({ category }: { category: Category }) {
     if (!view) return [];
     const filtered = filterEntries(all, view.filter, category);
     const sorted = sortEntries(filtered, view.sort, category);
-    return groupEntries(sorted, view.groupBy, category);
-  }, [all, view, category]);
+    return groupEntries(sorted, view.groupBy, category, db.settings.whoLabels);
+  }, [all, view, category, db.settings.whoLabels]);
 
   if (!view) return null;
 
@@ -321,6 +321,8 @@ function FilterMenu({ category }: { category: Category }) {
   const tags = [...new Set(selectEntries(db, category.id).flatMap((e) => e.tags))].sort();
   const active = isFilterActive(filter);
 
+  const whoLabels = db.settings.whoLabels;
+
   const items = [
     {
       key: '__fav',
@@ -328,6 +330,22 @@ function FilterMenu({ category }: { category: Category }) {
       checked: filter.favoritesOnly,
       onSelect: () => setView(category.id, { filter: { ...filter, favoritesOnly: !filter.favoritesOnly } }),
     },
+    ...(category.tracksWho
+      ? (['both', 'a', 'b'] as const).map((w) => ({
+          key: `who-${w}`,
+          label: whoLabels[w],
+          checked: (filter.who ?? []).includes(w),
+          onSelect: () =>
+            setView(category.id, {
+              filter: {
+                ...filter,
+                who: (filter.who ?? []).includes(w)
+                  ? (filter.who ?? []).filter((x) => x !== w)
+                  : [...(filter.who ?? []), w],
+              },
+            }),
+        }))
+      : []),
     ...category.statusLabels.map((label, i) => ({
       key: `status-${i}`,
       label,
@@ -386,6 +404,7 @@ function FilterMenu({ category }: { category: Category }) {
 function ActiveFilters({ category }: { category: Category }) {
   const views = useUi((s) => s.views);
   const setView = useUi((s) => s.setView);
+  const whoLabels = useStore((s) => s.db.settings.whoLabels);
   const view = views[category.id];
   if (!view) return null;
   const { filter } = view;
@@ -394,6 +413,13 @@ function ActiveFilters({ category }: { category: Category }) {
 
   if (filter.favoritesOnly) {
     pills.push({ key: 'fav', label: 'Favourites', clear: () => setView(category.id, { filter: { ...filter, favoritesOnly: false } }) });
+  }
+  for (const w of filter.who ?? []) {
+    pills.push({
+      key: `who${w}`,
+      label: whoLabels[w],
+      clear: () => setView(category.id, { filter: { ...filter, who: (filter.who ?? []).filter((x) => x !== w) } }),
+    });
   }
   if (filter.minRating > 0) {
     pills.push({ key: 'rating', label: `${filter.minRating / 2}★ and up`, clear: () => setView(category.id, { filter: { ...filter, minRating: 0 } }) });

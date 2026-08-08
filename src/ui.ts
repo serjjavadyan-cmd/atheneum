@@ -34,6 +34,7 @@ export const emptyFilter = (): FilterSpec => ({
   tags: [],
   minRating: 0,
   favoritesOnly: false,
+  who: [],
   fieldEquals: {},
 });
 
@@ -44,6 +45,7 @@ export function isFilterActive(f: FilterSpec): boolean {
     f.tags.length > 0 ||
     f.minRating > 0 ||
     f.favoritesOnly ||
+    (f.who?.length ?? 0) > 0 ||
     Object.keys(f.fieldEquals).length > 0
   );
 }

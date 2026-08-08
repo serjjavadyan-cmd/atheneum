@@ -20,6 +20,8 @@ interface Seed {
   rating: number;
   status: number;
   favorite?: boolean;
+  who?: 'both' | 'a' | 'b';
+  subItems?: { number: string; title: string; note?: string; rating?: number; done?: boolean }[];
   values: Record<string, unknown>;
   notes?: string;
 }
@@ -110,12 +112,18 @@ const SEEDS: Seed[] = [
 
   {
     category: 'tv', title: 'Severance', colors: ['#0f2038', '#6fa8dc'],
-    rating: 10, status: 1, favorite: true,
+    rating: 10, status: 1, favorite: true, who: 'both',
     values: {
       creator: people('Dan Erickson'), genre: ['Drama', 'Sci-fi', 'Thriller'],
       firstAired: 2022, seasons: 2, network: 'Apple TV+',
       characters: people('Mark S.', 'Helly R.', 'Irving B.', 'Dylan G.'),
     },
+    subItems: [
+      { number: 'S1E1', title: 'Good News About Hell', done: true, rating: 8 },
+      { number: 'S1E7', title: 'Defiant Jazz', note: 'The music dance experience. Unbearable and perfect.', done: true, rating: 10 },
+      { number: 'S1E9', title: 'The We We Are', note: 'Watched the last ten minutes standing up.', done: true, rating: 10 },
+      { number: 'S2E1', title: 'Hello, Ms. Cobel', done: false },
+    ],
   },
   {
     category: 'tv', title: 'Fleabag', colors: ['#5c1010', '#e26d6d'],
@@ -146,6 +154,39 @@ const SEEDS: Seed[] = [
     category: 'manga', title: 'A Silent Voice', colors: ['#123a3a', '#72cfc4'],
     rating: 9, status: 2,
     values: { author: people('Yoshitoki Ōima'), genre: ['Shōnen', 'Slice of life'], volumes: 7, volumesRead: 7, serialisation: 'Completed' },
+  },
+
+  {
+    category: 'anime', title: 'Frieren: Beyond Journey\'s End', colors: ['#2b1a4a', '#a58fe0'],
+    rating: 10, status: 1, favorite: true, who: 'both',
+    values: {
+      studio: 'Madhouse', director: people('Keiichirō Saitō'),
+      genre: ['Fantasy', 'Slice of life'], season: 'Autumn 2023',
+      episodes: 28, episodesWatched: 21, year: 2023, source: 'Manga',
+      characters: people('Frieren', 'Fern', 'Stark', 'Himmel'),
+      description: 'An elf mage outlives her companions and only then begins to wonder who they were.',
+    },
+    notes: 'A show about grief that never once says the word.',
+    subItems: [
+      { number: '1', title: 'The Journey\'s End', note: 'The first episode does what most shows need a season for.', done: true, rating: 10 },
+      { number: '10', title: 'Not a Substitute', done: true, rating: 9 },
+    ],
+  },
+  {
+    category: 'anime', title: 'Mushishi', colors: ['#1c3020', '#8fc48f'],
+    rating: 9, status: 2, who: 'a',
+    values: {
+      studio: 'Artland', genre: ['Slice of life', 'Mystery', 'Fantasy'],
+      episodes: 26, episodesWatched: 26, year: 2005, source: 'Manga',
+    },
+  },
+  {
+    category: 'anime', title: 'Cowboy Bebop', colors: ['#3a1418', '#d47a6a'],
+    rating: 10, status: 2, who: 'b',
+    values: {
+      studio: 'Sunrise', director: people('Shinichirō Watanabe'),
+      genre: ['Action', 'Sci-fi'], episodes: 26, episodesWatched: 26, year: 1998, source: 'Original',
+    },
   },
 
   {
@@ -286,12 +327,21 @@ export async function seedLibrary(): Promise<void> {
     useStore.getState().updateEntry(id, {
       rating: s.rating,
       status: s.status,
+      who: s.who ?? 'both',
       favorite: Boolean(s.favorite),
       notes: s.notes ?? '',
       dateFinished: s.status === 2 ? isoDate(new Date(Date.now() - Math.random() * 2e10)) : null,
     });
     for (const [key, value] of Object.entries(s.values)) {
       useStore.getState().setValue(id, key, value as never);
+    }
+    for (const item of s.subItems ?? []) {
+      const subId = useStore.getState().addSubItem(id, { number: item.number, title: item.title });
+      useStore.getState().updateSubItem(id, subId, {
+        note: item.note ?? '',
+        rating: item.rating ?? 0,
+        done: item.done ?? false,
+      });
     }
   }
 

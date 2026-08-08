@@ -25,6 +25,38 @@ export interface SavedImage {
   file: string;
 }
 
+/** One candidate from an online source. `fields` is keyed by default field key. */
+export interface LookupResult {
+  id: string;
+  source: string;
+  title: string;
+  year: number | null;
+  coverUrl: string | null;
+  url: string | null;
+  imdbId?: string | null;
+  fields: Record<string, unknown>;
+}
+
+export interface LookupSource {
+  id: string;
+  label: string;
+  needsKey: string | null;
+}
+
+export interface LookupResponse {
+  results: LookupResult[];
+  /** Anything that went wrong, phrased for a human. Never thrown. */
+  notes: string[];
+  sources: LookupSource[];
+}
+
+export interface LookupKeys {
+  tmdbKey: string;
+  igdbClientId: string;
+  igdbClientSecret: string;
+  omdbKey: string;
+}
+
 export interface Platform {
   readonly kind: 'electron' | 'browser';
   loadDb(): Promise<Database | null>;
@@ -41,6 +73,16 @@ export interface Platform {
   syncNow(db: Database): Promise<{ db: Database; status: SyncStatus }>;
   /** Where the data lives, for display in Settings. */
   dataDir(): Promise<string>;
+  /** Search online sources. Runs in the main process — the page's CSP forbids outbound requests. */
+  lookupSearch(
+    categoryId: string,
+    query: string,
+    hints: Record<string, unknown>,
+    keys: LookupKeys,
+    force: string | null,
+  ): Promise<LookupResponse>;
+  /** Download a cover and store it locally. Returns the stored file, as saveImage does. */
+  lookupCover(url: string): Promise<SavedImage>;
 }
 
 /* ------------------------------------------------------------------ *
@@ -55,6 +97,14 @@ interface AtheneumBridge {
   syncStatus(configured: string): Promise<SyncStatus>;
   syncNow(db: Database): Promise<{ db: Database; status: SyncStatus }>;
   dataDir(): Promise<string>;
+  lookupSearch(
+    categoryId: string,
+    query: string,
+    hints: Record<string, unknown>,
+    keys: LookupKeys,
+    force: string | null,
+  ): Promise<LookupResponse>;
+  lookupCover(url: string): Promise<SavedImage>;
 }
 
 declare global {
@@ -74,6 +124,9 @@ function makeElectronPlatform(bridge: AtheneumBridge): Platform {
     syncStatus: (configured) => bridge.syncStatus(configured),
     syncNow: (db) => bridge.syncNow(db),
     dataDir: () => bridge.dataDir(),
+    lookupSearch: (categoryId, query, hints, keys, force) =>
+      bridge.lookupSearch(categoryId, query, hints, keys, force),
+    lookupCover: (url) => bridge.lookupCover(url),
   };
 }
 
@@ -188,6 +241,20 @@ const browserPlatform: Platform = {
 
   async dataDir() {
     return 'browser storage (development)';
+  },
+
+  async lookupSearch() {
+    // The page's own CSP blocks outbound requests, and these APIs would fail CORS anyway.
+    // Lookups only work in the desktop app, where the main process does the fetching.
+    return {
+      results: [],
+      notes: ['Looking things up online only works in the desktop app.'],
+      sources: [],
+    };
+  },
+
+  async lookupCover(): Promise<SavedImage> {
+    throw new Error('Looking things up online only works in the desktop app.');
   },
 };
 

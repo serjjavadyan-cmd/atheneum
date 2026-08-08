@@ -158,6 +158,13 @@ export const IconCheck = (p: Props) => (
   <Svg {...p}><path d="M3 8.4l3.2 3.2L13 4.8" /></Svg>
 );
 
+export const IconSparkle = ({ size = 16, className }: Props) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" className={className} aria-hidden="true">
+    <path d="M8 1.4l1.15 3.9 3.9 1.15-3.9 1.15L8 11.5 6.85 7.6 2.95 6.45l3.9-1.15z" />
+    <path d="M12.9 9.9l.55 1.85 1.85.55-1.85.55-.55 1.85-.55-1.85-1.85-.55 1.85-.55z" opacity="0.7" />
+  </svg>
+);
+
 export const IconLink = (p: Props) => (
   <Svg {...p}>
     <path d="M6.6 9.4a2.6 2.6 0 0 0 3.7 0l2.1-2.1a2.6 2.6 0 1 0-3.7-3.7l-1 1" />

@@ -14,6 +14,7 @@ const path = require('node:path');
 const { locateSyncDir, describeCandidates } = require('./sync/locate.cjs');
 const { runSync } = require('./sync/run.cjs');
 const { SCHEME, saveImage, registerImageProtocol } = require('./images.cjs');
+const lookup = require('./lookup.cjs');
 
 const DEV_URL = 'http://localhost:5273';
 const isDev = !app.isPackaged;
@@ -115,6 +116,16 @@ function registerIpc() {
       properties: ['openDirectory', 'createDirectory'],
     });
     return result.canceled ? null : result.filePaths[0];
+  });
+
+  ipcMain.handle('lookup:search', (_e, categoryId, query, hints, keys, force) =>
+    lookup.search(categoryId, query, hints, keys, force));
+
+  /** Download a cover and store it, so the renderer never makes a network request itself. */
+  ipcMain.handle('lookup:cover', async (_e, url) => {
+    const { bytes, ext } = await lookup.fetchImage(url);
+    await ensureDirs();
+    return saveImage(imagesDir(), bytes, ext);
   });
 
   ipcMain.handle('sync:status', async (_e, configured) => {

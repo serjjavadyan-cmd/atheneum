@@ -60,9 +60,11 @@ const entry = (over = {}) => ({
   values: {},
   rating: 0,
   status: 0,
+  who: 'both',
   favorite: false,
   notes: '',
   tags: [],
+  subItems: [],
   dateStarted: null,
   dateFinished: null,
   createdAt: T0,
@@ -227,6 +229,51 @@ test('diary links are unioned', () => {
   const b = database('B', { diary: [day({ linkedEntryIds: ['e2'], updatedAt: T2 })] });
   const { db } = mergeDatabases(a, b);
   assert.deepEqual(db.diary[0].linkedEntryIds.sort(), ['e1', 'e2']);
+});
+
+console.log('\nmerge — sub-items and who');
+
+const sub = (over = {}) => ({
+  id: 's1', number: '1', title: 'Innie', note: '', rating: 0, done: false,
+  date: null, createdAt: T0, ...over,
+});
+
+test('a sub-item added on one machine arrives on the other', () => {
+  const a = database('A', { entries: [entry({ subItems: [sub()], updatedAt: T1 })] });
+  const b = database('B', { entries: [entry({ subItems: [sub({ id: 's2', number: '2' })], updatedAt: T2 })] });
+  const { db } = mergeDatabases(a, b);
+  assert.deepEqual(db.entries[0].subItems.map((s) => s.id).sort(), ['s1', 's2']);
+});
+
+test('ticking a sub-item done on either machine sticks', () => {
+  const a = database('A', { entries: [entry({ subItems: [sub({ done: true })], updatedAt: T1 })] });
+  const b = database('B', { entries: [entry({ subItems: [sub({ done: false })], updatedAt: T2 })] });
+  const { db } = mergeDatabases(a, b);
+  assert.equal(db.entries[0].subItems[0].done, true, 'a newer "not done" must not un-watch it');
+});
+
+test('two notes on the same sub-item both survive', () => {
+  const a = database('A', { entries: [entry({ subItems: [sub({ note: 'The lift scene.' })], updatedAt: T1 })] });
+  const b = database('B', { entries: [entry({ subItems: [sub({ note: 'That ending.' })], updatedAt: T2 })] });
+  const { db } = mergeDatabases(a, b);
+  const note = db.entries[0].subItems[0].note;
+  assert.ok(note.includes('The lift scene.'));
+  assert.ok(note.includes('That ending.'));
+});
+
+test('sub-item merging is idempotent', () => {
+  const a = database('A', { entries: [entry({ subItems: [sub({ note: 'mine' })], updatedAt: T1 })] });
+  const b = database('B', { entries: [entry({ subItems: [sub({ note: 'theirs' })], updatedAt: T2 })] });
+  const once = mergeDatabases(a, b).db;
+  const twice = mergeDatabases(once, b).db;
+  assert.deepEqual(twice.entries[0].subItems, once.entries[0].subItems);
+});
+
+test('who takes the newer choice', () => {
+  const a = database('A', { entries: [entry({ who: 'a', updatedAt: T1 })] });
+  const b = database('B', { entries: [entry({ who: 'b', updatedAt: T2 })] });
+  const { db } = mergeDatabases(a, b);
+  assert.equal(db.entries[0].who, 'b');
 });
 
 console.log('\nmerge — categories and fields');

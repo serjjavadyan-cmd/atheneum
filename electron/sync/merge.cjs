@@ -98,6 +98,9 @@ function mergeEntry(mine, theirs) {
     ...base,
     images: unionByKey(mine.images, theirs.images, (i) => i && i.hash, preferTheirs),
     tags: unionScalars(mine.tags, theirs.tags),
+    // Episodes, chapters, missions. Unioned by id like everything else, and each one's note
+    // is prose, so two edits of the same sub-item keep both rather than picking a winner.
+    subItems: mergeSubItems(mine.subItems, theirs.subItems, preferTheirs),
     values: mergeValues(mine.values, theirs.values, preferTheirs),
     // Dates: if only one side recorded it, keep it rather than letting a null win.
     dateStarted: mine.dateStarted ?? theirs.dateStarted ?? null,
@@ -149,6 +152,31 @@ function mergeProse(mine, theirs) {
     out.push(segment);
   }
   return out.join(PROSE_SEPARATOR);
+}
+
+function mergeSubItems(mine, theirs, preferTheirs) {
+  const a = Array.isArray(mine) ? mine : [];
+  const b = Array.isArray(theirs) ? theirs : [];
+  const byId = new Map(a.map((s) => [s.id, s]));
+
+  for (const item of b) {
+    if (!item || !item.id) continue;
+    const existing = byId.get(item.id);
+    if (!existing) {
+      byId.set(item.id, item);
+      continue;
+    }
+    byId.set(item.id, {
+      ...(preferTheirs ? { ...existing, ...item } : { ...item, ...existing }),
+      note: mergeProse(existing.note, item.note),
+      // Ticked on either machine counts as done — you did watch it.
+      done: Boolean(existing.done) || Boolean(item.done),
+      rating: Math.max(existing.rating || 0, item.rating || 0),
+      date: existing.date ?? item.date ?? null,
+    });
+  }
+
+  return [...byId.values()];
 }
 
 function mergeField(mine, theirs) {

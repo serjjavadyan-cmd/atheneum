@@ -32,6 +32,8 @@ export interface Field {
   type: FieldType;
   /** For select / multiselect. */
   options?: string[];
+  /** Applied to new entries in this category. */
+  defaultValue?: FieldValue;
   /** Show this field on the card in grid/list view. */
   showOnCard?: boolean;
   /** Placeholder / helper text in the editor. */
@@ -57,6 +59,13 @@ export interface Category {
   fields: Field[];
   /** Ordered progression, e.g. ["To read", "Reading", "Read"]. `Entry.status` indexes this. */
   statusLabels: string[];
+  /**
+   * What the small things inside an entry are called here — Episodes, Chapters, Missions.
+   * Null means this category doesn't offer them.
+   */
+  subItemLabel: string | null;
+  /** Whether the Both / Nane / Sergey control appears on entries in this category. */
+  tracksWho: boolean;
   defaultLayout: Layout;
   defaultSort: SortSpec;
   builtin: boolean;
@@ -94,6 +103,26 @@ export type FieldValue =
   | null
   | undefined;
 
+/**
+ * One of the small things inside an entry — an episode of a show, a chapter worth
+ * remembering, a mission, a play session. Only the ones worth adding, never a full index.
+ */
+export interface SubItem {
+  id: string;
+  /** Free-form so "S2E4" and "3.1" both work. */
+  number: string;
+  title: string;
+  note: string;
+  /** 0–10, as elsewhere. */
+  rating: number;
+  done: boolean;
+  date: string | null;
+  createdAt: string;
+}
+
+/** Which of you experienced it. The labels live in Settings; these keys never change. */
+export type Who = 'both' | 'a' | 'b';
+
 export interface Entry {
   id: string;
   categoryId: string;
@@ -108,9 +137,12 @@ export interface Entry {
   rating: number;
   /** Index into the category's `statusLabels`. */
   status: number;
+  /** Who experienced it. Sits immediately before the status control. */
+  who: Who;
   favorite: boolean;
   notes: string;
   tags: string[];
+  subItems: SubItem[];
   dateStarted: string | null;
   dateFinished: string | null;
   createdAt: string;
@@ -152,6 +184,8 @@ export interface FilterSpec {
   tags: string[];
   minRating: number;
   favoritesOnly: boolean;
+  /** Empty means no filter on who. */
+  who: Who[];
   /** `field:<key>` → required value, for group-by drill-downs. */
   fieldEquals: Record<string, string>;
 }
@@ -173,9 +207,20 @@ export interface Settings {
   syncEnabled: boolean;
   /** Minutes between automatic merges. */
   syncIntervalMin: number;
-  /** Off by default — Nane chose manual covers. Flipping this on enables src/lookup providers. */
+  /** Enables the Fill details / Find cover buttons. */
   onlineLookup: boolean;
+  /** Free, optional. Without it, film and TV lookups fall back to thin no-key sources. */
   tmdbKey: string;
+  /** Free, optional. Games. */
+  igdbClientId: string;
+  igdbClientSecret: string;
+  /** Free, optional. Supplies IMDb ratings. */
+  omdbKey: string;
+  /**
+   * Labels for the three-way who control. Editable so two names aren't baked into the source;
+   * the stored values stay 'both' | 'a' | 'b' whatever these say.
+   */
+  whoLabels: { both: string; a: string; b: string };
   accentHue: number;
   /** Reduce or disable the motion design. */
   reduceMotion: boolean;
