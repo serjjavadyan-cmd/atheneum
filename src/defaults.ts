@@ -1,0 +1,230 @@
+import type { Category, Field, FieldType, Settings } from './types';
+
+/**
+ * Built-in categories.
+ *
+ * Every id here is a fixed string, never a random one. Both machines generate the same
+ * defaults on first run, so identical ids let the sync merge recognise them as the same
+ * category instead of creating duplicates. Never renumber these.
+ */
+
+function f(
+  key: string,
+  label: string,
+  type: FieldType,
+  extra: Partial<Field> = {},
+): Field {
+  return { id: key, key, label, type, ...extra };
+}
+
+const GENRES_SCREEN = [
+  'Action', 'Adventure', 'Animation', 'Biography', 'Comedy', 'Crime', 'Documentary',
+  'Drama', 'Fantasy', 'History', 'Horror', 'Musical', 'Mystery', 'Romance',
+  'Sci-fi', 'Thriller', 'War', 'Western',
+];
+
+const GENRES_BOOK = [
+  'Classic', 'Contemporary', 'Crime', 'Essays', 'Fantasy', 'Historical', 'Horror',
+  'Literary fiction', 'Memoir', 'Mystery', 'Non-fiction', 'Philosophy', 'Poetry',
+  'Romance', 'Sci-fi', 'Short stories', 'Thriller', 'Travel',
+];
+
+export const DEFAULT_CATEGORIES: Category[] = [
+  {
+    id: 'books',
+    name: 'Book',
+    pluralName: 'Books',
+    glyph: '❦',
+    hue: 38,
+    order: 0,
+    builtin: true,
+    hidden: false,
+    statusLabels: ['To read', 'Reading', 'Read', 'Abandoned'],
+    defaultLayout: 'grid',
+    defaultSort: { key: 'title', direction: 'asc' },
+    fields: [
+      f('author', 'Author', 'people', { showOnCard: true }),
+      f('genre', 'Genre', 'multiselect', { options: GENRES_BOOK, showOnCard: true }),
+      f('series', 'Series', 'text'),
+      f('year', 'Year published', 'number'),
+      f('pages', 'Pages', 'number'),
+      f('publisher', 'Publisher', 'text'),
+      f('language', 'Language', 'text'),
+      f('characters', 'Characters', 'people', { hint: 'Who lives in this book' }),
+      f('description', 'Description', 'longtext'),
+    ],
+  },
+  {
+    id: 'movies',
+    name: 'Movie',
+    pluralName: 'Movies',
+    glyph: '☾',
+    hue: 210,
+    order: 1,
+    builtin: true,
+    hidden: false,
+    statusLabels: ['To watch', 'Watching', 'Watched'],
+    defaultLayout: 'grid',
+    defaultSort: { key: 'title', direction: 'asc' },
+    fields: [
+      f('director', 'Director', 'people', { showOnCard: true }),
+      f('genre', 'Genre', 'multiselect', { options: GENRES_SCREEN, showOnCard: true }),
+      f('year', 'Year', 'number', { showOnCard: true }),
+      f('cast', 'Cast', 'people', { hint: 'Actor — add the role as a note' }),
+      f('characters', 'Characters', 'people'),
+      f('runtime', 'Runtime', 'duration'),
+      f('country', 'Country', 'text'),
+      f('language', 'Language', 'text'),
+      f('description', 'Description', 'longtext'),
+    ],
+  },
+  {
+    id: 'tv',
+    name: 'Show',
+    pluralName: 'TV',
+    glyph: '▭',
+    hue: 262,
+    order: 2,
+    builtin: true,
+    hidden: false,
+    statusLabels: ['To watch', 'Watching', 'Watched', 'Dropped'],
+    defaultLayout: 'grid',
+    defaultSort: { key: 'title', direction: 'asc' },
+    fields: [
+      f('creator', 'Creator', 'people', { showOnCard: true }),
+      f('genre', 'Genre', 'multiselect', { options: GENRES_SCREEN, showOnCard: true }),
+      f('firstAired', 'First aired', 'number', { showOnCard: true }),
+      f('seasons', 'Seasons', 'number'),
+      f('episodes', 'Episodes', 'number'),
+      f('cast', 'Cast', 'people'),
+      f('characters', 'Characters', 'people'),
+      f('network', 'Network', 'text'),
+      f('description', 'Description', 'longtext'),
+    ],
+  },
+  {
+    id: 'manga',
+    name: 'Manga',
+    pluralName: 'Manga',
+    glyph: '⌘',
+    hue: 344,
+    order: 3,
+    builtin: true,
+    hidden: false,
+    statusLabels: ['To read', 'Reading', 'Read', 'Dropped'],
+    defaultLayout: 'grid',
+    defaultSort: { key: 'title', direction: 'asc' },
+    fields: [
+      f('author', 'Author', 'people', { showOnCard: true }),
+      f('artist', 'Artist', 'people'),
+      f('genre', 'Genre', 'multiselect', {
+        options: ['Shōnen', 'Shōjo', 'Seinen', 'Josei', 'Isekai', 'Slice of life',
+          'Action', 'Romance', 'Horror', 'Mystery', 'Fantasy', 'Sci-fi', 'Sports'],
+        showOnCard: true,
+      }),
+      f('volumes', 'Volumes', 'number'),
+      f('volumesRead', 'Volumes read', 'progress'),
+      f('serialisation', 'Serialisation', 'select', {
+        options: ['Ongoing', 'Completed', 'Hiatus', 'Cancelled'],
+      }),
+      f('year', 'Year', 'number'),
+      f('characters', 'Characters', 'people'),
+      f('description', 'Description', 'longtext'),
+    ],
+  },
+  {
+    id: 'games',
+    name: 'Game',
+    pluralName: 'Video games',
+    glyph: '◈',
+    hue: 165,
+    order: 4,
+    builtin: true,
+    hidden: false,
+    statusLabels: ['Backlog', 'Playing', 'Finished', 'Abandoned'],
+    defaultLayout: 'grid',
+    defaultSort: { key: 'title', direction: 'asc' },
+    fields: [
+      f('developer', 'Developer', 'text', { showOnCard: true }),
+      f('publisher', 'Publisher', 'text'),
+      f('platform', 'Platform', 'multiselect', {
+        options: ['PC', 'Switch', 'PS5', 'PS4', 'Xbox', 'Mac', 'iOS', 'Android', 'Retro'],
+        showOnCard: true,
+      }),
+      f('genre', 'Genre', 'multiselect', {
+        options: ['Action', 'Adventure', 'RPG', 'JRPG', 'Strategy', 'Puzzle', 'Platformer',
+          'Roguelike', 'Simulation', 'Survival', 'Shooter', 'Metroidvania', 'Visual novel', 'Horror'],
+        showOnCard: true,
+      }),
+      f('year', 'Year', 'number'),
+      f('hours', 'Hours played', 'number'),
+      f('characters', 'Characters', 'people'),
+      f('description', 'Description', 'longtext'),
+    ],
+  },
+  {
+    id: 'boardgames',
+    name: 'Board game',
+    pluralName: 'Board games',
+    glyph: '⬢',
+    hue: 22,
+    order: 5,
+    builtin: true,
+    hidden: false,
+    statusLabels: ['Want to play', 'In rotation', 'Played', 'Shelved'],
+    defaultLayout: 'grid',
+    defaultSort: { key: 'title', direction: 'asc' },
+    fields: [
+      f('designer', 'Designer', 'people', { showOnCard: true }),
+      f('publisher', 'Publisher', 'text'),
+      f('players', 'Players', 'text', { hint: 'e.g. 2–4', showOnCard: true }),
+      f('playTime', 'Play time', 'duration'),
+      f('weight', 'Complexity', 'rating', { hint: 'How heavy it plays' }),
+      f('mechanics', 'Mechanics', 'multiselect', {
+        options: ['Deck-building', 'Worker placement', 'Area control', 'Co-op', 'Drafting',
+          'Engine-building', 'Legacy', 'Party', 'Roll-and-write', 'Social deduction', 'Tile-laying'],
+      }),
+      f('year', 'Year', 'number'),
+      f('playedWith', 'Played with', 'people'),
+      f('description', 'Description', 'longtext'),
+    ],
+  },
+  {
+    id: 'cities',
+    name: 'City',
+    pluralName: 'Cities',
+    glyph: '⌖',
+    hue: 190,
+    order: 6,
+    builtin: true,
+    hidden: false,
+    statusLabels: ['Want to go', 'Been', 'Lived in'],
+    defaultLayout: 'gallery',
+    defaultSort: { key: 'dateStarted', direction: 'desc' },
+    fields: [
+      f('country', 'Country', 'text', { showOnCard: true }),
+      f('region', 'Region', 'text'),
+      f('travelledWith', 'Travelled with', 'people'),
+      f('highlights', 'Highlights', 'longtext', { hint: 'What you want to remember' }),
+      f('food', 'Food', 'longtext'),
+      f('wouldReturn', 'Would return', 'checkbox'),
+      f('coordinates', 'Coordinates', 'text', { hint: 'lat, lon' }),
+      f('description', 'Notes', 'longtext'),
+    ],
+  },
+];
+
+export const DEFAULT_SETTINGS: Settings = {
+  syncDir: '',
+  syncEnabled: true,
+  syncIntervalMin: 5,
+  onlineLookup: false,
+  tmdbKey: '',
+  accentHue: 42,
+  reduceMotion: false,
+};
+
+/** Moods offered in the diary. Purely a starting palette. */
+export const MOODS = [
+  'Radiant', 'Content', 'Quiet', 'Restless', 'Tired', 'Melancholy', 'Anxious', 'Tender', 'Alive',
+];

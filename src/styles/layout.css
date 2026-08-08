@@ -1,0 +1,244 @@
+/* ==========================================================================
+   Shell — titlebar, sidebar, topbar, content
+   ========================================================================== */
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background:
+    /* a faint warm bloom at the top-left keeps the near-black from reading as flat grey */
+    radial-gradient(1200px 700px at 8% -10%, rgba(228, 207, 154, 0.045), transparent 62%),
+    radial-gradient(900px 600px at 100% 100%, rgba(120, 150, 210, 0.03), transparent 60%),
+    var(--bg);
+}
+
+/* --- titlebar: the OS window chrome strip ------------------------------ */
+.titlebar {
+  height: 30px;
+  flex: 0 0 auto;
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom: 1px solid transparent;
+}
+.titlebar button { -webkit-app-region: no-drag; }
+/* On macOS the traffic lights are inset over this strip, so it earns its height.
+   Windows keeps its native frame, which would make the strip dead space. */
+body[data-platform='mac'] .sidebar-head { padding-top: 8px; }
+body[data-platform='win'] .titlebar { display: none; }
+
+.shell {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+/* --- sidebar ------------------------------------------------------------ */
+.sidebar {
+  width: var(--sidebar-w);
+  flex: 0 0 var(--sidebar-w);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--hairline);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.014), transparent 220px);
+}
+
+.sidebar-head {
+  padding: 6px 20px 18px;
+  flex: 0 0 auto;
+}
+
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  font-family: var(--serif);
+  cursor: default;
+}
+.wordmark-mark {
+  font-size: 13px;
+  color: var(--gold);
+  text-shadow: 0 0 14px rgba(228, 207, 154, 0.5);
+}
+.wordmark-text {
+  font-size: 12px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.sidebar-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 12px 16px;
+}
+
+.nav-section { margin-bottom: 22px; }
+.nav-section-title {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 0 8px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nav-section-title button {
+  color: var(--ink-faint);
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.nav-section-title button:hover { color: var(--gold); background: var(--gold-faint); }
+
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-size: 13px;
+  text-align: left;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.nav-item:hover { color: var(--ink); background: rgba(255, 255, 255, 0.035); }
+.nav-item.is-active { color: var(--ink); background: rgba(255, 255, 255, 0.055); }
+
+/* The active category's own hue as a left-edge marker. */
+.nav-item.is-active::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 16px;
+  border-radius: 0 2px 2px 0;
+  background: hsl(var(--tint));
+  box-shadow: 0 0 10px hsl(var(--tint) / 0.6);
+}
+
+.nav-glyph {
+  width: 17px;
+  text-align: center;
+  font-size: 13px;
+  color: hsl(var(--tint) / 0.85);
+  flex: 0 0 auto;
+}
+.nav-item:not(.is-active) .nav-glyph { color: var(--ink-dim); }
+.nav-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-count {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+}
+
+/* Saved views: the remove control only appears on hover, so the list stays quiet. */
+.nav-item-view .nav-remove {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 16px; height: 16px;
+  border-radius: 4px;
+  color: var(--ink-faint);
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease), color var(--fast) var(--ease),
+              background var(--fast) var(--ease);
+}
+.nav-item-view:hover .nav-remove { opacity: 1; }
+.nav-item-view .nav-remove:hover { color: #ff9b8f; background: rgba(255, 90, 70, 0.14); }
+
+.sidebar-foot {
+  flex: 0 0 auto;
+  padding: 12px;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* --- main column --------------------------------------------------------- */
+.main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  flex: 0 0 auto;
+  min-height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 28px;
+  border-bottom: 1px solid var(--hairline);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.012), transparent);
+}
+
+.topbar-title {
+  font-family: var(--serif);
+  font-size: 21px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: baseline;
+  gap: 11px;
+}
+.topbar-title .count {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+.content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.content-pad { padding: 26px 28px 80px; }
+
+/* --- search field in the topbar ------------------------------------------ */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+  max-width: 320px;
+  flex: 1 1 240px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: rgba(0, 0, 0, 0.28);
+  transition: border-color var(--med) var(--ease), background var(--med) var(--ease);
+}
+.search:focus-within {
+  border-color: var(--gold-dim);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 3px rgba(228, 207, 154, 0.06);
+}
+.search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+}
+.search input::placeholder { color: var(--ink-faint); }
+.search-icon { color: var(--ink-faint); flex: 0 0 auto; }

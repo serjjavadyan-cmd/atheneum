@@ -1,0 +1,164 @@
+/* ==========================================================================
+   Atheneum — dark gallery
+   A near-black room where the cover art is the only real colour.
+   ========================================================================== */
+
+:root {
+  /* --- surfaces ------------------------------------------------------ */
+  --bg:            #0b0b0e;
+  --bg-deep:       #070709;
+  --bg-raised:     #131318;
+  --bg-sunken:     #08080b;
+  --glass:         rgba(22, 22, 28, 0.66);
+  --glass-heavy:   rgba(14, 14, 19, 0.94);
+
+  /* --- ink ------------------------------------------------------------ */
+  --ink:           #ece8e1;
+  --ink-soft:      #b6b1ab;
+  --ink-dim:       #7d7872;
+  --ink-faint:     #4e4a47;
+
+  /* --- accent (gold, inherited from Constellation and then cooled) ----- */
+  --gold:          #e4cf9a;
+  --gold-bright:   #f3e3ba;
+  --gold-dim:      rgba(228, 207, 154, 0.42);
+  --gold-faint:    rgba(228, 207, 154, 0.12);
+
+  /* --- structure ------------------------------------------------------ */
+  --hairline:      rgba(236, 232, 225, 0.09);
+  --hairline-firm: rgba(236, 232, 225, 0.16);
+
+  /* --- ambient tint ---------------------------------------------------
+     Every entry overrides --tint with the dominant colour of its own cover.
+     This default is a neutral warm so untinted surfaces still feel intentional. */
+  --tint: 40 30% 60%;
+
+  /* --- type ----------------------------------------------------------- */
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI",
+          Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  /* --- motion ---------------------------------------------------------
+     One shared easing curve keeps every transition in the app feeling related. */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --fast: 140ms;
+  --med: 260ms;
+  --slow: 480ms;
+
+  /* --- geometry -------------------------------------------------------- */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --sidebar-w: 232px;
+  --topbar-h: 60px;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-lift: 0 8px 20px rgba(0, 0, 0, 0.55), 0 28px 60px rgba(0, 0, 0, 0.45);
+  --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.7);
+}
+
+/* --- reset ------------------------------------------------------------ */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; padding: 0; }
+
+html, body, #root { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  /* Electron: nothing is selectable by default; opt in on real prose. */
+  user-select: none;
+  cursor: default;
+}
+
+input, textarea, [contenteditable], .selectable { user-select: text; }
+
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+button { cursor: pointer; }
+
+a { color: inherit; text-decoration: none; }
+
+img { display: block; max-width: 100%; }
+
+::selection { background: rgba(228, 207, 154, 0.26); color: var(--ink); }
+
+/* --- scrollbars: present but nearly invisible until you need them ------ */
+* { scrollbar-width: thin; scrollbar-color: rgba(236,232,225,0.14) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(236, 232, 225, 0.1);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(236, 232, 225, 0.22); background-clip: content-box; }
+
+/* --- typography primitives -------------------------------------------- */
+.display {
+  font-family: var(--serif);
+  font-weight: 400;
+  letter-spacing: -0.012em;
+  line-height: 1.12;
+}
+
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  font-weight: 500;
+}
+
+.muted { color: var(--ink-dim); }
+.soft { color: var(--ink-soft); }
+
+/* --- focus: a gold ring, never the browser default -------------------- */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--gold-dim);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* --- utility ----------------------------------------------------------- */
+.hidden { display: none !important; }
+.grow { flex: 1 1 auto; }
+.row { display: flex; align-items: center; }
+.col { display: flex; flex-direction: column; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Respect the OS setting, and Nane's own toggle in Settings. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+body[data-reduce-motion='true'] *,
+body[data-reduce-motion='true'] *::before,
+body[data-reduce-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}

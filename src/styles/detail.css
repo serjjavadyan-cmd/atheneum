@@ -1,0 +1,256 @@
+/* ==========================================================================
+   Entry detail — the room an entry gets to itself
+   ========================================================================== */
+
+.detail {
+  position: relative;
+  min-height: 100%;
+}
+
+/* The cover, blown up and blurred, becomes the room's lighting.
+   This is what makes a Dune page amber and a Blade Runner page teal. */
+.detail-ambience {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 520px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  mask-image: linear-gradient(#000 0%, rgba(0, 0, 0, 0.5) 45%, transparent 100%);
+  -webkit-mask-image: linear-gradient(#000 0%, rgba(0, 0, 0, 0.5) 45%, transparent 100%);
+}
+.detail-ambience img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(72px) saturate(1.5);
+  transform: scale(1.35);
+  opacity: 0.4;
+}
+.detail-ambience-fallback {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(90% 70% at 22% 0%, hsl(var(--tint) / 0.3), transparent 70%);
+}
+
+.detail-inner {
+  position: relative;
+  z-index: 1;
+  padding: 22px 34px 100px;
+  max-width: 1180px;
+}
+
+.detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  padding: 5px 11px 5px 8px;
+  margin-left: -8px;
+  border-radius: 999px;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.detail-back:hover { color: var(--ink); background: rgba(255, 255, 255, 0.05); }
+
+.detail-top {
+  display: grid;
+  grid-template-columns: 268px minmax(0, 1fr);
+  gap: 42px;
+  margin-top: 20px;
+  align-items: start;
+}
+
+/* --- the cover column ------------------------------------------------------ */
+.detail-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: linear-gradient(160deg, hsl(var(--tint) / 0.2), var(--bg-raised));
+  box-shadow: var(--shadow-lift), 0 0 60px hsl(var(--tint) / 0.18);
+}
+.detail-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  pointer-events: none;
+}
+.detail-cover img { width: 100%; height: 100%; object-fit: cover; }
+.detail-cover.is-wide { aspect-ratio: 3 / 2; }
+
+.detail-cover-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 24px;
+  color: hsl(var(--tint) / 0.5);
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+/* drop target state, used for drag-and-drop cover import */
+.detail-cover.is-dropping,
+.dropzone.is-dropping {
+  outline: 2px dashed var(--gold-dim);
+  outline-offset: -6px;
+  background: hsl(var(--tint) / 0.14);
+}
+
+.detail-thumbs { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+.detail-thumb {
+  position: relative;
+  width: 48px; height: 48px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  opacity: 0.62;
+  transition: opacity var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+.detail-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.detail-thumb:hover { opacity: 1; }
+.detail-thumb.is-cover { opacity: 1; border-color: var(--gold-dim); }
+.detail-thumb-add {
+  width: 48px; height: 48px;
+  border-radius: 6px;
+  border: 1px dashed var(--hairline-firm);
+  color: var(--ink-faint);
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  transition: color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+.detail-thumb-add:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+.detail-cover-actions { display: flex; gap: 7px; margin-top: 11px; flex-wrap: wrap; }
+
+/* --- the information column ------------------------------------------------- */
+.detail-head { display: flex; flex-direction: column; gap: 12px; }
+
+.detail-eyebrow { display: flex; align-items: center; gap: 9px; }
+.detail-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(var(--tint) / 0.9);
+}
+
+.detail-title {
+  font-family: var(--serif);
+  font-size: 40px;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+.detail-title.input-bare { font-family: var(--serif); font-size: 40px; line-height: 1.08; }
+
+.detail-actionbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 0 18px;
+  margin-top: 4px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* the status stepper — click a stage to move through it */
+.stepper { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; border: 1px solid var(--hairline); background: rgba(0,0,0,.28); }
+.stepper button {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.stepper button:hover { color: var(--ink-soft); background: rgba(255,255,255,.04); }
+.stepper button.is-on { color: var(--ink); background: hsl(var(--tint) / 0.24); }
+
+/* --- the field table ---------------------------------------------------------- */
+.detail-fields {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 0;
+  margin-top: 22px;
+}
+.detail-field {
+  display: contents;
+}
+.detail-field > dt {
+  padding: 11px 16px 11px 0;
+  font-size: 10.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  border-top: 1px solid var(--hairline);
+  align-self: stretch;
+  padding-top: 14px;
+}
+.detail-field > dd {
+  padding: 11px 0;
+  border-top: 1px solid var(--hairline);
+  font-size: 13.5px;
+  color: var(--ink);
+  min-width: 0;
+}
+.detail-field:first-child > dt,
+.detail-field:first-child > dd { border-top: none; }
+
+.detail-empty-value { color: var(--ink-faint); font-style: italic; font-size: 12.5px; }
+
+/* prose blocks (description, notes) get the serif and real leading */
+.prose-block {
+  font-family: var(--serif);
+  font-size: 15.5px;
+  line-height: 1.72;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.detail-section { margin-top: 46px; }
+.detail-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--hairline);
+}
+.detail-section-title { font-family: var(--serif); font-size: 17px; }
+
+/* --- people list ------------------------------------------------------------------ */
+.people { display: flex; flex-wrap: wrap; gap: 7px; }
+.person {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.025);
+  transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.person:hover { border-color: var(--hairline-firm); background: rgba(255, 255, 255, 0.05); }
+.person-note { font-size: 11px; color: var(--ink-faint); font-style: italic; }
+
+@media (max-width: 940px) {
+  .detail-top { grid-template-columns: 200px minmax(0, 1fr); gap: 28px; }
+  .detail-title, .detail-title.input-bare { font-size: 30px; }
+  .detail-fields { grid-template-columns: 108px minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .detail-top { grid-template-columns: minmax(0, 1fr); }
+  .detail-cover { max-width: 220px; }
+}
