@@ -23,6 +23,9 @@ export interface SyncStatus {
 export interface SavedImage {
   hash: string;
   file: string;
+  /** Only present for covers fetched online, where the main process measured them. */
+  width?: number;
+  height?: number;
 }
 
 /** One candidate from an online source. `fields` is keyed by default field key. */

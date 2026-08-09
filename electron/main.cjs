@@ -123,9 +123,10 @@ function registerIpc() {
 
   /** Download a cover and store it, so the renderer never makes a network request itself. */
   ipcMain.handle('lookup:cover', async (_e, url) => {
-    const { bytes, ext } = await lookup.fetchImage(url);
+    const { bytes, ext, width, height } = await lookup.fetchImage(url);
     await ensureDirs();
-    return saveImage(imagesDir(), bytes, ext);
+    const saved = await saveImage(imagesDir(), bytes, ext);
+    return { ...saved, width, height };
   });
 
   ipcMain.handle('sync:status', async (_e, configured) => {

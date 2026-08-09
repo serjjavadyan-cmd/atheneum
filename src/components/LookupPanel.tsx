@@ -6,6 +6,7 @@ import { platform } from '../platform';
 import type { LookupResponse, LookupResult } from '../platform';
 import type { Category, Entry } from '../types';
 import { hintsFrom, planFill, type Plan } from '../lib/applyLookup';
+import { tintOfStoredImage } from '../lib/images';
 import { IconCheck, IconImage, IconSearch, IconX } from './Icons';
 
 /**
@@ -92,13 +93,15 @@ export function LookupPanel({ entry, category, mode, onClose }: Props) {
       if (wantsCover && chosen.coverUrl) {
         try {
           const saved = await platform.lookupCover(chosen.coverUrl);
+          // Sample the colour off the stored file, so a fetched cover lights the page exactly
+          // as a dropped one does rather than falling back to the category's flat hue.
+          const tint = await tintOfStoredImage(saved.file);
           addImage(entry.id, {
             hash: saved.hash,
             file: saved.file,
-            width: 0,
-            height: 0,
-            // The tint is sampled locally on next render; a neutral placeholder until then.
-            tint: `${category.hue} 40% 55%`,
+            width: saved.width ?? 0,
+            height: saved.height ?? 0,
+            tint: tint ?? `${category.hue} 40% 55%`,
           });
           gotCover = true;
         } catch (e) {

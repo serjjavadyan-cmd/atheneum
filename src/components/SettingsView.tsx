@@ -176,9 +176,14 @@ export function SettingsView() {
             </p>
 
             <p className="field-hint">
-              Books, manga, anime and board games work with no setup at all, through Open Library,
-              Google Books, MyAnimeList and BoardGameGeek. The keys below are free, take about two
-              minutes each and need no card — without them, films, TV and games come back thin.
+              Books work with no setup through Apple Books, which has by far the best cover art
+              and returns the edition you actually mean; Open Library fills in page counts and
+              publishers behind it. Anime and manga use AniList, also no setup. Board games
+              can't be looked up — BoardGameGeek now requires an account for its API.
+            </p>
+            <p className="field-hint">
+              The keys below are free, take about two minutes each and need no card. Without
+              them, films, TV and games come back thin.
             </p>
 
             <KeyField

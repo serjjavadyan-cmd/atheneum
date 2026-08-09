@@ -95,7 +95,51 @@ const year = (s) => {
 };
 
 /* ------------------------------------------------------------------ *
- * Books — Open Library, then Google Books
+ * Books — Apple Books first
+ *
+ * Measured against the alternatives: Apple returns 784x1200 artwork where Open Library tops
+ * out at 333x500 and the Google Books API thumbnail is about 128px. It also returns the
+ * edition a person means — Fagles and Fitzgerald for the Iliad, rather than a 1946 reprint —
+ * and finds "Meno" by Plato, which Open Library misses without an author hint.
+ *
+ * Open Library is kept as a second source because Apple has no page count or publisher, and
+ * the merge below combines them into one candidate.
+ * ------------------------------------------------------------------ */
+
+/** Apple serves artwork at whatever size you ask for by rewriting the path segment. */
+function appleArtwork(url, size = 1200) {
+  if (!url) return null;
+  return url.replace(/\/\d+x\d+bb\./, `/${size}x${size}bb.`);
+}
+
+async function appleBooks(query, hints) {
+  const term = [query, hints.author].filter(Boolean).join(' ');
+  const data = await getJson(
+    `https://itunes.apple.com/search?media=ebook&limit=8&term=${encodeURIComponent(term)}`,
+    {},
+    'Apple Books',
+  );
+
+  return (data.results ?? []).map((r) => ({
+    id: `apple:${r.trackId}`,
+    source: 'Apple Books',
+    title: clean(r.trackName),
+    year: year(r.releaseDate),
+    coverUrl: appleArtwork(r.artworkUrl100),
+    url: r.trackViewUrl ?? null,
+    fields: {
+      // "Homer, Robert Fagles & Bernard Knox" is a display string, not a list.
+      author: clean(r.artistName).split(/,\s*|\s&\s/).filter(Boolean),
+      year: year(r.releaseDate),
+      // Apple's genre list ends with shelf categories like "Books" that say nothing.
+      genre: (r.genres ?? []).filter((g) => !/^(Books|Fiction & Literature|Nonfiction)$/i.test(g)),
+      description: clean(String(r.description ?? '').replace(/<[^>]+>/g, '')) || null,
+    },
+  }));
+}
+
+/* ------------------------------------------------------------------ *
+ * Open Library and Google Books
  * ------------------------------------------------------------------ */
 
 async function openLibrary(query, hints) {
@@ -165,7 +209,109 @@ async function googleBooks(query, hints) {
 }
 
 /* ------------------------------------------------------------------ *
- * Anime and manga — Jikan, which serves MyAnimeList's own data
+ * Anime and manga — AniList first
+ *
+ * Chosen over MyAnimeList on measurement: bigger artwork (460x695 against roughly 425x600),
+ * cleaner matching, and it stays up. Jikan depends on MyAnimeList being reachable and reports
+ * its outages as a 504; it was down every time this was tested. Jikan remains as a fallback
+ * because it occasionally has a title AniList doesn't.
+ *
+ * No key, 30 requests a minute.
+ * ------------------------------------------------------------------ */
+
+const ANILIST_QUERY = `
+query ($search: String, $type: MediaType) {
+  Page(perPage: 8) {
+    media(search: $search, type: $type, sort: SEARCH_MATCH) {
+      id
+      title { romaji english }
+      startDate { year }
+      seasonYear season format status episodes chapters volumes averageScore genres
+      description(asHtml: false)
+      source
+      siteUrl
+      studios(isMain: true) { nodes { name } }
+      staff(perPage: 4) { edges { role node { name { full } } } }
+      characters(perPage: 8, sort: ROLE) { nodes { name { full } } }
+      coverImage { extraLarge large }
+    }
+  }
+}`;
+
+async function anilist(kind, query) {
+  const res = await request(
+    'https://graphql.anilist.co',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        query: ANILIST_QUERY,
+        variables: { search: query, type: kind === 'anime' ? 'ANIME' : 'MANGA' },
+      }),
+    },
+    'AniList',
+  );
+  const body = await res.json();
+  if (body.errors?.length) throw new Error(`AniList: ${body.errors[0].message}`);
+
+  const capitalise = (s) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : null);
+
+  return (body.data?.Page?.media ?? []).map((m) => {
+    const staff = m.staff?.edges ?? [];
+    const pick = (re) => staff.filter((e) => re.test(e.role ?? '')).map((e) => clean(e.node.name.full));
+    const characters = (m.characters?.nodes ?? []).map((c) => clean(c.name.full)).filter(Boolean);
+    // AniList descriptions carry <br> and <i> even when asHtml is false.
+    const description = clean(String(m.description ?? '').replace(/<[^>]+>/g, ' ')) || null;
+    const yr = m.seasonYear ?? m.startDate?.year ?? null;
+
+    const common = {
+      id: `anilist:${kind}:${m.id}`,
+      source: 'AniList',
+      title: clean(m.title.english || m.title.romaji),
+      year: yr,
+      coverUrl: m.coverImage?.extraLarge ?? m.coverImage?.large ?? null,
+      url: m.siteUrl ?? null,
+    };
+
+    if (kind === 'anime') {
+      return {
+        ...common,
+        fields: {
+          studio: m.studios?.nodes?.[0]?.name ?? null,
+          director: pick(/director/i),
+          genre: m.genres ?? [],
+          episodes: m.episodes ?? null,
+          year: yr,
+          season: m.season && yr ? `${capitalise(m.season)} ${yr}` : null,
+          source: m.source ? capitalise(String(m.source).replace(/_/g, ' ')) : null,
+          characters,
+          description,
+        },
+      };
+    }
+
+    return {
+      ...common,
+      fields: {
+        author: pick(/story|original/i).length ? pick(/story|original/i) : pick(/./),
+        artist: pick(/art/i),
+        genre: m.genres ?? [],
+        volumes: m.volumes ?? null,
+        year: yr,
+        serialisation: m.status === 'FINISHED' ? 'Completed'
+          : m.status === 'RELEASING' ? 'Ongoing'
+          : m.status === 'HIATUS' ? 'Hiatus'
+          : m.status === 'CANCELLED' ? 'Cancelled'
+          : null,
+        characters,
+        description,
+      },
+    };
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Jikan — MyAnimeList's data, kept as a fallback behind AniList
  * ------------------------------------------------------------------ */
 
 async function jikan(kind, query) {
@@ -448,18 +594,21 @@ async function boardGameGeek(query) {
 
 /** Which sources suit which built-in category, best first. */
 const SOURCES = {
-  books: ['openlibrary', 'googlebooks'],
+  books: ['applebooks', 'openlibrary'],
   movies: ['tmdb-movie'],
   tv: ['tmdb-tv'],
-  anime: ['jikan-anime'],
-  manga: ['jikan-manga'],
+  anime: ['anilist-anime', 'jikan-anime'],
+  manga: ['anilist-manga', 'jikan-manga'],
   games: ['igdb'],
   boardgames: ['bgg'],
 };
 
 const ALL_SOURCES = [
+  { id: 'applebooks', label: 'Apple Books', needsKey: null },
   { id: 'openlibrary', label: 'Open Library', needsKey: null },
   { id: 'googlebooks', label: 'Google Books', needsKey: null },
+  { id: 'anilist-anime', label: 'AniList — anime', needsKey: null },
+  { id: 'anilist-manga', label: 'AniList — manga', needsKey: null },
   { id: 'jikan-anime', label: 'MyAnimeList — anime', needsKey: null },
   { id: 'jikan-manga', label: 'MyAnimeList — manga', needsKey: null },
   // BGG began requiring authentication on its XML API; kept listed so the failure explains
@@ -470,10 +619,29 @@ const ALL_SOURCES = [
   { id: 'igdb', label: 'IGDB — games', needsKey: 'igdb' },
 ];
 
+/**
+ * How good each source's artwork is, measured rather than guessed. When two sources describe
+ * the same thing, the cover comes from whichever scores highest here regardless of which one
+ * supplied the rest of the data.
+ */
+const COVER_QUALITY = {
+  'Apple Books': 100,   // 784x1200
+  TMDB: 90,             // w780
+  IGDB: 85,             // t_cover_big_2x
+  AniList: 80,          // 460x695
+  MyAnimeList: 60,      // ~425x600
+  BoardGameGeek: 55,
+  'Open Library': 40,   // 333x500
+  'Google Books': 10,   // ~128px
+};
+
 function runSource(source, query, hints, keys) {
   switch (source) {
+    case 'applebooks': return appleBooks(query, hints);
     case 'openlibrary': return openLibrary(query, hints);
     case 'googlebooks': return googleBooks(query, hints);
+    case 'anilist-anime': return anilist('anime', query);
+    case 'anilist-manga': return anilist('manga', query);
     case 'jikan-anime': return jikan('anime', query);
     case 'jikan-manga': return jikan('manga', query);
     case 'tmdb-movie': return tmdb('movie', query, hints, keys);
@@ -493,23 +661,145 @@ function runSource(source, query, hints, keys) {
  * @param {object} keys        the user's optional API keys
  * @param {string|null} force  a specific source id, when the user overrides
  */
+/** Normalise a title enough to recognise the same work described by two different services. */
+function titleKey(title, yr) {
+  const t = String(title ?? '')
+    .toLowerCase()
+    .replace(/[’'`]/g, '')
+    .replace(/^(the|a|an)\s+/, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+  return `${t}::${yr ?? ''}`;
+}
+
+/**
+ * Fold results describing the same thing into one candidate.
+ *
+ * Without this, searching a book shows the Apple edition and the Open Library edition as two
+ * near-identical cards, and picking the wrong one costs you either the good cover or the page
+ * count. Merged, one card carries the best artwork available and the union of the metadata.
+ */
+function mergeResults(results) {
+  const byKey = new Map();
+
+  for (const r of results) {
+    // Match on title alone rather than title+year, since services disagree about which year a
+    // work belongs to — first publication, this edition, or this printing.
+    const loose = titleKey(r.title, '');
+    const existing = byKey.get(loose);
+
+    // Only ever merge *across* services. Two hits from the same one are two real editions,
+    // and collapsing them would hide the choice between, say, Fagles and Fitzgerald.
+    if (!existing || existing.sources.includes(r.source)) {
+      if (!existing) byKey.set(loose, { ...r, sources: [r.source] });
+      else byKey.set(`${loose}#${byKey.size}`, { ...r, sources: [r.source] });
+      continue;
+    }
+
+    existing.sources.push(r.source);
+
+    // Fill only the gaps: the first source to answer is the higher-priority one.
+    for (const [key, value] of Object.entries(r.fields)) {
+      const held = existing.fields[key];
+      const heldEmpty = held == null || held === '' || (Array.isArray(held) && !held.length);
+      const incomingUseful = value != null && value !== '' && (!Array.isArray(value) || value.length);
+      if (heldEmpty && incomingUseful) existing.fields[key] = value;
+    }
+
+    // The cover is chosen on measured quality, not on who answered first.
+    const mine = COVER_QUALITY[existing.source] ?? 50;
+    const theirs = COVER_QUALITY[r.source] ?? 50;
+    if (r.coverUrl && (!existing.coverUrl || theirs > mine)) {
+      existing.coverUrl = r.coverUrl;
+      existing.source = r.source;
+    }
+    existing.year = existing.year ?? r.year;
+    existing.url = existing.url ?? r.url;
+    existing.imdbId = existing.imdbId ?? r.imdbId;
+  }
+
+  return [...byKey.values()];
+}
+
+/** Edit distance, capped to what's needed for short titles. */
+function distance(a, b) {
+  if (a === b) return 0;
+  if (!a.length || !b.length) return Math.max(a.length, b.length);
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(
+        prev[j] + 1,
+        row[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    prev = row;
+  }
+  return prev[b.length];
+}
+
+const normaliseTitle = (s) => String(s ?? '')
+  .toLowerCase().replace(/[’'`]/g, '').replace(/^(the|a|an)\s+/, '')
+  .replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * Order candidates by how well they answer what was actually typed.
+ *
+ * Services return their own idea of relevance, which for "Illiad" put a 2026 omnibus and a
+ * copy of the Odyssey above the Iliad itself. Scoring on closeness to the query — tolerant of
+ * the typo, penalising titles that are much longer than what was asked for — fixes that
+ * without needing the query to be spelled correctly.
+ */
+function rankResults(results, query) {
+  const q = normaliseTitle(query);
+
+  const score = (r) => {
+    const t = normaliseTitle(r.title);
+    let s = 0;
+
+    if (t === q) s += 100;
+    else {
+      const d = distance(q, t);
+      // A near-miss on a short title is a typo; a long title is a different work.
+      s += Math.max(0, 60 - d * 8);
+      if (t.startsWith(q)) s += 25;
+      else if (t.includes(q)) s += 15;
+      // Extra words beyond the query are usually omnibus editions or companions.
+      s -= Math.min(30, Math.max(0, t.split(' ').length - q.split(' ').length) * 5);
+    }
+
+    if (r.coverUrl) s += 20;
+    if (r.sources.length > 1) s += 8; // corroborated by more than one service
+    s += Math.min(10, Object.values(r.fields).filter((v) => v != null && v !== '' && (!Array.isArray(v) || v.length)).length);
+    return s;
+  };
+
+  return [...results].sort((a, b) => score(b) - score(a));
+}
+
 async function search(categoryId, query, hints = {}, keys = {}, force = null) {
   const trimmed = String(query ?? '').trim();
   if (!trimmed) return { results: [], notes: ['Give the entry a title first.'], sources: ALL_SOURCES };
 
-  const sources = force ? [force] : (SOURCES[categoryId] ?? ['openlibrary', 'googlebooks']);
+  const sources = force ? [force] : (SOURCES[categoryId] ?? ['applebooks', 'openlibrary']);
   const notes = [];
-  const results = [];
+  const collected = [];
 
   for (const source of sources) {
     try {
       const found = await runSource(source, trimmed, hints, keys);
-      results.push(...found.filter((r) => r && r.title));
+      collected.push(...found.filter((r) => r && r.title));
     } catch (err) {
       // humanise() already names the service, so prefixing the source id would read twice.
       notes.push(err.message);
     }
+    // Once a good source has answered well there is no need to bother the weaker ones.
+    if (!force && collected.length >= 6) break;
   }
+
+  const results = rankResults(mergeResults(collected), trimmed);
 
   // Enrich films and shows with their IMDb rating when a key is present.
   if (keys.omdbKey) {
@@ -523,6 +813,53 @@ async function search(categoryId, query, hints = {}, keys = {}, force = null) {
   return { results: results.slice(0, 16), notes, sources: ALL_SOURCES };
 }
 
+/**
+ * Read pixel dimensions straight from the file header.
+ *
+ * Needed because a "successful" download is not the same as a usable cover: Open Library
+ * answers a missing cover with a valid 43-byte 1x1 image and a perfectly good content-type,
+ * which would otherwise be stored and shown as a blank card.
+ */
+function imageDimensions(buf) {
+  // Each format is checked against its own minimum. A single blanket length guard would
+  // reject a perfectly readable short header — a 1x1 GIF placeholder is only 43 bytes.
+  if (buf.length < 10) return null;
+
+  // PNG
+  if (buf.length >= 24 && buf.readUInt32BE(0) === 0x89504e47) {
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  }
+  // GIF
+  if (buf.slice(0, 3).toString('ascii') === 'GIF') {
+    return { width: buf.readUInt16LE(6), height: buf.readUInt16LE(8) };
+  }
+  // WebP (VP8X / VP8 / VP8L all start RIFF....WEBP)
+  if (buf.length >= 30 && buf.slice(0, 4).toString('ascii') === 'RIFF' && buf.slice(8, 12).toString('ascii') === 'WEBP') {
+    const chunk = buf.slice(12, 16).toString('ascii');
+    if (chunk === 'VP8X') return { width: (buf.readUIntLE(24, 3) & 0xffffff) + 1, height: (buf.readUIntLE(27, 3) & 0xffffff) + 1 };
+    if (chunk === 'VP8 ') return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff };
+  }
+  // JPEG: walk the segments to the start-of-frame marker.
+  if (buf[0] === 0xff && buf[1] === 0xd8) {
+    let i = 2;
+    // Reading the frame needs bytes up to i+8, so i may go as far as length-9 inclusive.
+    while (i <= buf.length - 9) {
+      if (buf[i] !== 0xff) { i++; continue; }
+      const marker = buf[i + 1];
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+      }
+      const len = buf.readUInt16BE(i + 2);
+      if (len <= 0) break;
+      i += 2 + len;
+    }
+  }
+  return null;
+}
+
+/** Narrower than this and it is a placeholder or a thumbnail, not a cover. */
+const MIN_COVER_WIDTH = 200;
+
 /** Fetch cover bytes so the renderer never has to make a network request itself. */
 async function fetchImage(url) {
   const controller = new AbortController();
@@ -532,13 +869,26 @@ async function fetchImage(url) {
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     const type = res.headers.get('content-type') ?? '';
     if (!type.startsWith('image/')) throw new Error('That link is not an image.');
+
     const buffer = Buffer.from(await res.arrayBuffer());
     if (!buffer.length) throw new Error('The image came back empty.');
+
+    const size = imageDimensions(buffer);
+    if (size && size.width < MIN_COVER_WIDTH) {
+      throw new Error(
+        `That source has no real cover for this — it returned a ${size.width}×${size.height} placeholder.`,
+      );
+    }
+
     const ext = type.includes('png') ? 'png' : type.includes('webp') ? 'webp' : 'jpg';
-    return { bytes: buffer, ext };
+    return { bytes: buffer, ext, width: size?.width ?? 0, height: size?.height ?? 0 };
   } finally {
     clearTimeout(timer);
   }
 }
 
-module.exports = { search, fetchImage, ALL_SOURCES, SOURCES };
+module.exports = {
+  search, fetchImage, ALL_SOURCES, SOURCES,
+  // Exported for scripts/test-lookup.cjs — pure, so they can be tested without the network.
+  mergeResults, rankResults, imageDimensions, appleArtwork, humanise, MIN_COVER_WIDTH,
+};

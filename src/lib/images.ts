@@ -147,6 +147,29 @@ function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   return [h * 360, s, l];
 }
 
+/**
+ * Sample the tint of an image that is already stored.
+ *
+ * A cover fetched online is written to disk by the main process, so it never passes through
+ * the canvas path that dropped files take. Without this it would keep a flat placeholder tint
+ * and the entry's page would not light up.
+ */
+export async function tintOfStoredImage(file: string): Promise<string | null> {
+  try {
+    const res = await fetch(platform.imageUrl(file));
+    if (!res.ok) return null;
+    const bitmap = await createImageBitmap(await res.blob());
+    try {
+      return sampleTint(bitmap);
+    } finally {
+      bitmap.close();
+    }
+  } catch {
+    // A missing tint is cosmetic; the cover itself is already saved.
+    return null;
+  }
+}
+
 /** Pull image files out of a drop event or a paste event. */
 export function imagesFromDataTransfer(dt: DataTransfer | null): File[] {
   if (!dt) return [];

@@ -111,6 +111,7 @@ src/
 scripts/
   test-sync.cjs      sync safety — the merge rules
   test-fill.cjs      auto-fill safety — fills gaps, never overwrites
+  test-lookup.cjs    ranking, merging, and rejecting placeholder images
   test-migrate.cjs   opening an older library loses nothing
   smoke-electron.cjs loads the real built app in a hidden window
   make-icon.cjs      draws the app icon from scratch
@@ -147,21 +148,38 @@ fields would be filled before anything is written.
 and Homer is used to narrow the search, listed under "leaving your own entries alone", and left
 exactly as you wrote him. Everything still blank gets filled in.
 
-| Source | Covers | Key |
-| --- | --- | --- |
-| Open Library, Google Books | Books | none |
-| MyAnimeList (via Jikan) | Anime, manga | none |
-| TMDB | Films, TV — and the IMDb link | free, 2 min |
-| OMDb | IMDb ratings | free, 2 min |
-| IGDB | Games | free Twitch app |
+| Source | Covers | Cover size | Key |
+| --- | --- | --- | --- |
+| **Apple Books** | Books | **784×1200** | none |
+| Open Library | Books — pages, publisher | 333×500 | none |
+| **AniList** | Anime, manga | **460×695** | none |
+| MyAnimeList (via Jikan) | Anime, manga — fallback | ~425×600 | none |
+| TMDB | Films, TV — and the IMDb link | w780 | free, 2 min |
+| OMDb | IMDb ratings | — | free, 2 min |
+| IGDB | Games | large | free Twitch app |
 
-Two things worth knowing, both verified against the live services:
+Those sizes are measured, not assumed, and they drove the source order. Apple Books also
+returns the *edition you mean* — Fagles and Fitzgerald for the Iliad, rather than a 1946
+reprint — and finds "Meno" by Plato, which Open Library misses. AniList was chosen over
+MyAnimeList for bigger art, cleaner matching, and because Jikan depends on MyAnimeList being
+reachable, which it repeatedly wasn't.
+
+When two services describe the same thing they are folded into **one candidate** carrying the
+best available artwork and the union of the metadata. Two editions from the *same* service stay
+separate, because choosing between translations is a real choice. Results are then ranked by
+closeness to what you typed, which is tolerant of typos: "Illiad" still puts the Fagles *Iliad*
+first.
+
+Three things worth knowing, all verified against the live services:
 
 - **Goodreads retired its API in 2020 and IMDb has no free API at all.** Nobody's app fetches
   IMDb posters. TMDB is the substitute; it supplies the artwork and the `imdb_id`, so films and
   shows still get a real IMDb link and, with an OMDb key, the IMDb score.
 - **BoardGameGeek now requires an account** for its XML API and returns 401 to everyone else, so
   board games have to be added by hand. The app says so plainly rather than looking broken.
+- **A successful download is not a usable cover.** Open Library answers a missing cover with a
+  valid 43-byte 1×1 image and a correct content-type. Anything under 200px wide is refused, so
+  you never end up with a blank card that looks like a bug.
 
 Keys live in **Settings → Looking things up**. Everything works without them, just thinner. All
 fetching happens in the main process — the page's own CSP forbids outbound requests.
