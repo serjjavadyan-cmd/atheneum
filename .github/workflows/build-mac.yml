@@ -1,0 +1,46 @@
+# Builds the macOS installer on a real Mac, because electron-builder refuses every macOS
+# target from Windows ("Build for macOS is supported only on macOS").
+#
+# Run it from the repository's Actions tab, or by pushing a v* tag. The .dmg appears as a
+# downloadable artifact on the finished run.
+#
+# One caveat worth knowing: a .dmg downloaded from here carries macOS's quarantine flag, and
+# on macOS 15+ a quarantined unsigned app can no longer be opened with right-click → Open.
+# You have to allow it once under System Settings → Privacy & Security → "Open Anyway".
+# Building on your own Mac avoids quarantine altogether, so prefer that when you can.
+name: Build macOS installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  dmg:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The merge and auto-fill rules are the parts worth failing a build over.
+      - run: npm run test:sync
+      - run: npm run test:fill
+      - run: npm run test:lookup
+
+      # Unsigned on purpose: signing needs a paid Apple developer account.
+      - name: Build the .dmg
+        run: npm run build:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Atheneum-macOS
+          path: release/*.dmg
+          if-no-files-found: error
