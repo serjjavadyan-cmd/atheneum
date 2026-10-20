@@ -41,13 +41,24 @@ npm run build:mac
 
 The installer lands in `release/`. Open it and drag Atheneum to Applications.
 
-**The first launch will be blocked.** The build isn't code-signed — that needs a paid Apple
-developer account — so macOS refuses it on a double-click. Get past it once:
+Builds are **unsigned** — signing needs a paid Apple developer account — but what that
+costs you depends entirely on how the file reached the Mac:
 
-> **Right-click** Atheneum in Applications → **Open** → **Open** in the dialog.
+- **Built on that Mac** (the commands above): nothing. macOS only quarantines files that
+  arrive from somewhere else, so a build you produced locally opens like any other app.
+- **Downloaded** — from CI, a cloud folder, anywhere: the file is quarantined, and on
+  macOS 15 and later a quarantined unsigned app can no longer be let through with
+  right-click → Open. Allow it once under **System Settings → Privacy & Security**, where
+  a notice about Atheneum appears with an **Open Anyway** button.
 
-macOS remembers after that and it behaves like any other app. This is a one-time thing per
-install, not a recurring nuisance.
+That asymmetry is the reason to build on the Mac rather than download a finished installer.
+
+### Or build it in CI
+
+`.github/workflows/build-mac.yml` builds the `.dmg` on a GitHub-hosted Mac, for when the
+MacBook is not to hand. Push the repo, open **Actions → Build macOS installer → Run
+workflow**, and the `.dmg` is attached to the finished run. It arrives as a download, so
+the quarantine note above applies to it.
 
 ---
 
