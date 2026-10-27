@@ -17,7 +17,12 @@ on:
 
 jobs:
   dmg:
-    runs-on: macos-latest
+    # Pinned to the Intel runner on purpose. "macos-latest" now means macOS 15 on Apple
+    # Silicon, and arm64 macOS runners are not allocated to free-tier private repos -- the
+    # job fails with "not acquired by Runner of type hosted" before it ever starts.
+    # Cross-architecture is fine within macOS, so this still builds for Apple Silicon.
+    runs-on: macos-13
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -33,11 +38,17 @@ jobs:
       - run: npm run test:fill
       - run: npm run test:lookup
 
-      # Unsigned on purpose: signing needs a paid Apple developer account.
+      - run: npm run build:web
+
+      # Universal, so one download works on both Apple Silicon and Intel Macs without
+      # needing to know which one this is for. Unsigned: signing needs a paid Apple account.
       - name: Build the .dmg
-        run: npm run build:mac
+        run: npx electron-builder --mac dmg --universal
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Show what was built
+        run: ls -lh release/*.dmg
 
       - uses: actions/upload-artifact@v4
         with:
