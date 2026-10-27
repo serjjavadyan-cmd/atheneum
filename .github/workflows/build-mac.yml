@@ -22,7 +22,7 @@ jobs:
     # job fails with "not acquired by Runner of type hosted" before it ever starts.
     # Cross-architecture is fine within macOS, so this still builds for Apple Silicon.
     runs-on: macos-13
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -40,12 +40,17 @@ jobs:
 
       - run: npm run build:web
 
-      # Universal, so one download works on both Apple Silicon and Intel Macs without
-      # needing to know which one this is for. Unsigned: signing needs a paid Apple account.
+      # x64 only, not universal. Universal downloads and builds two whole Electron
+      # distributions and merges them, which roughly doubles a build that was already the
+      # slowest step -- and the target Mac runs Monterey, so it is almost certainly Intel.
+      # On Apple Silicon an x64 build still runs, through Rosetta.
+      #
+      # Verbose, because the previous attempt gave no clue where it was spending its time.
       - name: Build the .dmg
-        run: npx electron-builder --mac dmg --universal
+        run: npx electron-builder --mac dmg --x64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          DEBUG: electron-builder
 
       - name: Show what was built
         run: ls -lh release/*.dmg
