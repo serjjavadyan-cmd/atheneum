@@ -46,12 +46,20 @@ costs you depends entirely on how the file reached the Mac:
 
 - **Built on that Mac** (the commands above): nothing. macOS only quarantines files that
   arrive from somewhere else, so a build you produced locally opens like any other app.
-- **Downloaded** — from CI, a cloud folder, anywhere: the file is quarantined, and on
-  macOS 15 and later a quarantined unsigned app can no longer be let through with
-  right-click → Open. Allow it once under **System Settings → Privacy & Security**, where
-  a notice about Atheneum appears with an **Open Anyway** button.
+- **Downloaded** — from CI, a cloud folder, anywhere: the file is quarantined, and the
+  first launch has to be allowed once. How depends on the macOS version:
+  - **Monterey, Ventura, Sonoma (12–14):** Control-click Atheneum in Applications →
+    **Open** → **Open** in the dialog. That is the whole thing.
+  - **Sequoia (15) and later:** right-click → Open no longer works for unsigned apps.
+    Try to open it once, then go to **System Settings → Privacy & Security**, scroll down,
+    and press **Open Anyway** next to the note about Atheneum.
 
-That asymmetry is the reason to build on the Mac rather than download a finished installer.
+Either way it is once per install, not every launch.
+
+### Which macOS does it need
+
+Electron 33 ships Chromium 130, which requires **macOS 11 Big Sur or newer**. Monterey and
+anything later is fine; Catalina and older is not.
 
 ### Or build it in CI
 
