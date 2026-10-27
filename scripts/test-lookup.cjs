@@ -11,6 +11,7 @@
 const assert = require('node:assert/strict');
 const {
   mergeResults, rankResults, imageDimensions, appleArtwork, humanise, MIN_COVER_WIDTH,
+  scoreOutOfTen, malLink, SOURCES, ALL_SOURCES,
 } = require('../electron/lookup.cjs');
 
 let passed = 0;
@@ -167,6 +168,45 @@ test('known outages are explained, not shown as status codes', () => {
   assert.match(humanise('bgg', 401, ''), /requires an account/i);
   assert.match(humanise('jikan-anime', 504, ''), /MyAnimeList is not responding/i);
   assert.match(humanise('Apple Books', 429, ''), /rate-limiting/i);
+});
+
+console.log('\nanime — a score and a link, the way films get IMDb');
+
+test('an AniList score out of 100 becomes one out of 10', () => {
+  assert.equal(scoreOutOfTen(91), 9.1);
+  assert.equal(scoreOutOfTen(86), 8.6);
+  assert.equal(scoreOutOfTen(90), 9);
+  assert.equal(scoreOutOfTen(100), 10);
+});
+
+test('an unscored title reports nothing rather than zero', () => {
+  // Zero would read as "rated terribly" instead of "not rated yet".
+  assert.equal(scoreOutOfTen(null), null);
+  assert.equal(scoreOutOfTen(undefined), null);
+});
+
+test('a MyAnimeList link is built from the id AniList carries', () => {
+  assert.equal(malLink('anime', 52991), 'https://myanimelist.net/anime/52991');
+  assert.equal(malLink('manga', 642), 'https://myanimelist.net/manga/642');
+});
+
+test('a missing or nonsense id produces no link at all', () => {
+  assert.equal(malLink('anime', null), null);
+  assert.equal(malLink('anime', 0), null);
+  assert.equal(malLink('books', 123), null, 'MyAnimeList has no path for other kinds');
+});
+
+test('anime and manga lead with AniList, keeping Jikan behind it', () => {
+  assert.deepEqual(SOURCES.anime, ['anilist-anime', 'jikan-anime']);
+  assert.deepEqual(SOURCES.manga, ['anilist-manga', 'jikan-manga']);
+});
+
+test('no anime or manga source needs a key', () => {
+  for (const id of [...SOURCES.anime, ...SOURCES.manga]) {
+    const s = ALL_SOURCES.find((x) => x.id === id);
+    assert.ok(s, id + ' should be listed');
+    assert.equal(s.needsKey, null, id + ' must work with no setup');
+  }
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

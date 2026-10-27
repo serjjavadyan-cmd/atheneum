@@ -163,7 +163,7 @@ exactly as you wrote him. Everything still blank gets filled in.
 | --- | --- | --- | --- |
 | **Apple Books** | Books | **784×1200** | none |
 | Open Library | Books — pages, publisher | 333×500 | none |
-| **AniList** | Anime, manga | **460×695** | none |
+| **AniList** | Anime, manga — and the MyAnimeList score and link | **460×695** | none |
 | MyAnimeList (via Jikan) | Anime, manga — fallback | ~425×600 | none |
 | TMDB | Films, TV — and the IMDb link | w780 | free, 2 min |
 | OMDb | IMDb ratings | — | free, 2 min |
@@ -188,6 +188,10 @@ Three things worth knowing, all verified against the live services:
   shows still get a real IMDb link and, with an OMDb key, the IMDb score.
 - **BoardGameGeek now requires an account** for its XML API and returns 401 to everyone else, so
   board games have to be added by hand. The app says so plainly rather than looking broken.
+- **Anime needs no key at all.** AniList carries each title’s MyAnimeList id, exactly as TMDB
+  carries the IMDb one, so anime and manga entries get a **Score** out of 10 and a clickable
+  **MyAnimeList** link from the source with the better artwork — with nothing to sign up for.
+
 - **A successful download is not a usable cover.** Open Library answers a missing cover with a
   valid 43-byte 1×1 image and a correct content-type. Anything under 200px wide is refused, so
   you never end up with a blank card that looks like a bug.

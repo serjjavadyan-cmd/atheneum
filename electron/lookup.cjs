@@ -219,11 +219,30 @@ async function googleBooks(query, hints) {
  * No key, 30 requests a minute.
  * ------------------------------------------------------------------ */
 
+/**
+ * AniList scores out of 100; every rating in the app is out of 10. One decimal place,
+ * so 91 reads as 9.1 rather than 9.
+ */
+function scoreOutOfTen(averageScore) {
+  return typeof averageScore === 'number' ? Math.round(averageScore) / 10 : null;
+}
+
+/**
+ * AniList carries each title's MyAnimeList id, the same way TMDB carries the IMDb one.
+ * That buys a link to the site people actually recognise, from the source with the better
+ * artwork. `kind` is already 'anime' or 'manga', which is also MAL's own path segment.
+ */
+function malLink(kind, idMal) {
+  if (!idMal || (kind !== 'anime' && kind !== 'manga')) return null;
+  return `https://myanimelist.net/${kind}/${idMal}`;
+}
+
 const ANILIST_QUERY = `
 query ($search: String, $type: MediaType) {
   Page(perPage: 8) {
     media(search: $search, type: $type, sort: SEARCH_MATCH) {
       id
+      idMal
       title { romaji english }
       startDate { year }
       seasonYear season format status episodes chapters volumes averageScore genres
@@ -264,6 +283,12 @@ async function anilist(kind, query) {
     const description = clean(String(m.description ?? '').replace(/<[^>]+>/g, ' ')) || null;
     const yr = m.seasonYear ?? m.startDate?.year ?? null;
 
+    // The same move TMDB gets: the source supplies the art and data, and also an id for
+    // the best-known site, so the entry ends up with a score and a link people recognise.
+    // AniList scores out of 100; every other rating in the app is out of 10.
+    const score = scoreOutOfTen(m.averageScore);
+    const mal = malLink(kind, m.idMal);
+
     const common = {
       id: `anilist:${kind}:${m.id}`,
       source: 'AniList',
@@ -284,6 +309,8 @@ async function anilist(kind, query) {
           year: yr,
           season: m.season && yr ? `${capitalise(m.season)} ${yr}` : null,
           source: m.source ? capitalise(String(m.source).replace(/_/g, ' ')) : null,
+          score,
+          mal,
           characters,
           description,
         },
@@ -303,6 +330,8 @@ async function anilist(kind, query) {
           : m.status === 'HIATUS' ? 'Hiatus'
           : m.status === 'CANCELLED' ? 'Cancelled'
           : null,
+        score,
+        mal,
         characters,
         description,
       },
@@ -331,6 +360,10 @@ async function jikan(kind, query) {
       url: d.url ?? null,
     };
 
+    // Jikan already scores out of 10, and its url is the MyAnimeList page itself.
+    const score = typeof d.score === 'number' ? d.score : null;
+    const mal = d.url ?? null;
+
     if (kind === 'anime') {
       return {
         ...common,
@@ -340,6 +373,8 @@ async function jikan(kind, query) {
           episodes: d.episodes ?? null,
           year: common.year,
           season: d.season && d.year ? `${d.season[0].toUpperCase()}${d.season.slice(1)} ${d.year}` : null,
+          score,
+          mal,
           source: d.source ? `${d.source[0].toUpperCase()}${d.source.slice(1)}` : null,
           description: clean(d.synopsis) || null,
         },
@@ -356,6 +391,8 @@ async function jikan(kind, query) {
         serialisation: d.status === 'Finished' ? 'Completed'
           : d.status === 'Publishing' ? 'Ongoing'
           : d.status ?? null,
+        score,
+        mal,
         description: clean(d.synopsis) || null,
       },
     };
@@ -891,4 +928,5 @@ module.exports = {
   search, fetchImage, ALL_SOURCES, SOURCES,
   // Exported for scripts/test-lookup.cjs — pure, so they can be tested without the network.
   mergeResults, rankResults, imageDimensions, appleArtwork, humanise, MIN_COVER_WIDTH,
+  scoreOutOfTen, malLink,
 };

@@ -140,6 +140,8 @@ export const DEFAULT_CATEGORIES: Category[] = [
         options: ['Ongoing', 'Completed', 'Hiatus', 'Cancelled'],
       }),
       f('year', 'Year', 'number'),
+      f('score', 'Score', 'number', { hint: 'out of 10' }),
+      f('mal', 'MyAnimeList', 'url'),
       f('characters', 'Characters', 'people'),
       f('description', 'Description', 'longtext'),
     ],
@@ -173,6 +175,8 @@ export const DEFAULT_CATEGORIES: Category[] = [
       f('source', 'Adapted from', 'select', {
         options: ['Original', 'Manga', 'Light novel', 'Novel', 'Game', 'Web manga'],
       }),
+      f('score', 'Score', 'number', { hint: 'out of 10' }),
+      f('mal', 'MyAnimeList', 'url'),
       f('characters', 'Characters', 'people'),
       f('description', 'Description', 'longtext'),
     ],
