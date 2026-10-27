@@ -189,6 +189,12 @@ body[data-platform='win'] .titlebar { display: none; }
   padding: 12px 28px;
   border-bottom: 1px solid var(--hairline);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.012), transparent);
+  /* The window may be as narrow as 900px, which is not enough for the title, search,
+     three menus, the layout switcher and Add on one line. Without wrapping, Add is
+     pushed past the edge and clipped away by the app's hidden overflow — present in
+     the DOM, impossible to click. A second row is far better than a missing button. */
+  flex-wrap: wrap;
+  row-gap: 10px;
 }
 
 .topbar-title {
@@ -221,9 +227,9 @@ body[data-platform='win'] .titlebar { display: none; }
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 180px;
+  min-width: 132px;
   max-width: 320px;
-  flex: 1 1 240px;
+  flex: 1 1 200px;
   padding: 7px 12px;
   border-radius: 999px;
   border: 1px solid var(--hairline);
